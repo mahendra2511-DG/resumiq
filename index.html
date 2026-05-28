@@ -1,0 +1,2173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Resumiq — Build Your Resume</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+// ── ADMIN TRACKING (defined here, patching happens after page load) ─────────────────────────────────
+const ADMIN_DATA_KEY = 'resumiq_admin_data';
+
+function getAdminData() {
+  try { return JSON.parse(localStorage.getItem(ADMIN_DATA_KEY) || '{"students":[],"payments":[],"resumes":[],"activity":[],"atsChecks":0}'); }
+  catch(e) { return {students:[],payments:[],resumes:[],activity:[],atsChecks:0}; }
+}
+function saveAdminData(d) { localStorage.setItem(ADMIN_DATA_KEY, JSON.stringify(d)); }
+
+function trackLogin() {
+  // Called when user enters the app
+  const d = getAdminData();
+  const today = new Date().toISOString().split('T')[0];
+  const name = document.getElementById('r-name')?.value || 'Anonymous';
+  const email = document.getElementById('r-email')?.value || '';
+  // Check if student already exists
+  let student = d.students.find(s => s.email && s.email === email);
+  if (!student) {
+    student = { name, email, joinDate: today, resumeCount: 0, atsCount: 0, paid: IS_PAID, usedAI: false, lastActive: today };
+    d.students.push(student);
+    d.activity.push({ type: 'login', name, desc: 'opened the app and started building', time: new Date().toLocaleString('en-IN') });
+  } else {
+    student.lastActive = today;
+    if (name && name !== 'Anonymous') student.name = name;
+  }
+  saveAdminData(d);
+}
+
+function trackAI(feature) {
+  const d = getAdminData();
+  const email = document.getElementById('r-email')?.value || '';
+  const name = document.getElementById('r-name')?.value || 'A student';
+  const student = d.students.find(s => s.email && s.email === email);
+  if (student) { student.usedAI = true; student.lastActive = new Date().toISOString().split('T')[0]; }
+  if (feature === 'ats') { d.atsChecks = (d.atsChecks || 0) + 1; if (student) student.atsCount = (student.atsCount || 0) + 1; }
+  d.activity.push({ type: feature, name, desc: 'used AI feature: ' + feature, time: new Date().toLocaleString('en-IN') });
+  saveAdminData(d);
+}
+
+function trackResume(action) {
+  const d = getAdminData();
+  const email = document.getElementById('r-email')?.value || '';
+  const name = document.getElementById('r-name')?.value || 'Anonymous';
+  const student = d.students.find(s => s.email && s.email === email);
+  if (student) { student.resumeCount = (student.resumeCount || 0) + 1; student.lastActive = new Date().toISOString().split('T')[0]; }
+  const today = new Date().toISOString().split('T')[0];
+  d.resumes.push({ studentName: name, template: TPL || 'Modern', action, date: today });
+  d.activity.push({ type: 'download', name, desc: 'downloaded resume as ' + action, time: new Date().toLocaleString('en-IN') });
+  saveAdminData(d);
+}
+
+function trackPayment(paymentId) {
+  const d = getAdminData();
+  const name = document.getElementById('r-name')?.value || 'Anonymous';
+  const email = document.getElementById('r-email')?.value || '';
+  const today = new Date().toISOString().split('T')[0];
+  const time = new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+  // Update student paid status
+  const student = d.students.find(s => s.email && s.email === email);
+  if (student) { student.paid = true; }
+  else { d.students.push({ name, email, joinDate: today, resumeCount: 0, atsCount: 0, paid: true, usedAI: false, lastActive: today }); }
+  d.payments.push({ name, email, paymentId, date: today, time });
+  d.activity.push({ type: 'payment', name, desc: 'paid ₹100 — full access unlocked 🎉', time: new Date().toLocaleString('en-IN') });
+  saveAdminData(d);
+}
+
+// Track when user enters app - safe wrapper applied after page loads
+function _trackEnterApp() {
+  if (typeof trackLogin === 'function') setTimeout(trackLogin, 500);
+}
+
+</script>
+<style>
+:root{
+  --ink:#0f172a; --ink2:#334155; --ink3:#64748b; --ink4:#94a3b8;
+  --surface:#ffffff; --surface2:#f8fafc; --surface3:#f1f5f9;
+  --border:#e2e8f0; --border2:#cbd5e1;
+  --primary:#6366f1; --primary-soft:rgba(99,102,241,.08); --primary-light:#ede9fe;
+  --green:#10b981; --green-soft:rgba(16,185,129,.08);
+  --amber:#f59e0b; --amber-soft:rgba(245,158,11,.08);
+  --red:#ef4444; --red-soft:rgba(239,68,68,.08);
+  --blue:#3b82f6; --blue-soft:rgba(59,130,246,.08);
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,.08);
+  --shadow-lg:0 8px 32px rgba(0,0,0,.1);
+  --r:14px; --r-sm:10px; --r-xs:8px;
+  --font-head:'Outfit',sans-serif;
+  --font-body:'Inter',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--surface2);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.6;min-height:100vh;}
+img,svg{display:block;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:var(--surface3);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* ── LANDING ─────────────────────────────────── */
+.landing{min-height:100vh;background:var(--surface);display:flex;flex-direction:column;}
+.land-nav{padding:0 2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;height:64px;max-width:1200px;margin:0 auto;width:100%;}
+.land-logo{display:flex;align-items:center;gap:10px;font-family:var(--font-head);font-weight:800;font-size:20px;color:var(--ink);text-decoration:none;}
+.land-logo-icon{width:36px;height:36px;background:var(--primary);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:800;}
+.land-logo span{color:var(--primary);}
+.land-nav-outer{border-bottom:1px solid var(--border);}
+.land-nav-inner{display:flex;align-items:center;justify-content:space-between;max-width:1200px;margin:0 auto;padding:0 2rem;height:64px;}
+.land-links{display:flex;gap:4px;}
+.land-link{padding:7px 14px;border-radius:var(--r-xs);font-size:13px;color:var(--ink3);cursor:pointer;border:none;background:none;font-family:var(--font-body);transition:all .15s;}
+.land-link:hover{color:var(--ink);background:var(--surface3);}
+.land-cta-row{display:flex;gap:10px;}
+.btn-land{padding:9px 20px;border-radius:var(--r-xs);font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:var(--font-body);transition:all .2s;}
+.btn-land-outline{background:transparent;color:var(--ink);border:1.5px solid var(--border2);}
+.btn-land-outline:hover{border-color:var(--primary);color:var(--primary);}
+.btn-land-fill{background:var(--primary);color:#fff;}
+.btn-land-fill:hover{background:#4f46e5;transform:translateY(-1px);box-shadow:0 4px 12px rgba(99,102,241,.35);}
+
+/* HERO */
+.hero-section{flex:1;display:flex;align-items:center;justify-content:center;padding:80px 2rem;background:linear-gradient(160deg,#fafafa 0%,#f0f0ff 50%,#e8f5ff 100%);}
+.hero-content{max-width:700px;text-align:center;}
+.hero-chip{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--border);border-radius:20px;padding:6px 16px;font-size:12px;color:var(--ink3);margin-bottom:28px;box-shadow:var(--shadow);}
+.hero-chip-dot{width:7px;height:7px;background:var(--green);border-radius:50%;}
+.hero-h1{font-family:var(--font-head);font-size:clamp(38px,6vw,62px);font-weight:800;line-height:1.1;letter-spacing:-1.5px;color:var(--ink);margin-bottom:20px;}
+.hero-h1 .hl{color:var(--primary);}
+.hero-sub{font-size:17px;color:var(--ink3);line-height:1.7;margin-bottom:36px;max-width:540px;margin-left:auto;margin-right:auto;}
+.hero-btns{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:48px;}
+.btn-hero-main{padding:15px 32px;background:var(--primary);color:#fff;border-radius:12px;font-family:var(--font-head);font-size:15px;font-weight:700;cursor:pointer;border:none;transition:all .25s;display:inline-flex;align-items:center;gap:9px;}
+.btn-hero-main:hover{background:#4f46e5;transform:translateY(-2px);box-shadow:0 12px 28px rgba(99,102,241,.35);}
+.btn-hero-sec{padding:15px 28px;background:var(--surface);color:var(--ink);border-radius:12px;font-family:var(--font-head);font-size:15px;font-weight:600;cursor:pointer;border:1.5px solid var(--border2);transition:all .2s;}
+.btn-hero-sec:hover{border-color:var(--primary);color:var(--primary);}
+.hero-stats{display:flex;justify-content:center;gap:40px;flex-wrap:wrap;}
+.h-stat .num{font-family:var(--font-head);font-size:24px;font-weight:800;color:var(--ink);}
+.h-stat .lbl{font-size:12px;color:var(--ink4);margin-top:2px;}
+.h-stat+.h-stat{padding-left:40px;border-left:1px solid var(--border);}
+
+/* FEATURE CARDS */
+.features-section{padding:80px 2rem;background:var(--surface);max-width:1200px;margin:0 auto;}
+.section-label{font-size:11px;font-weight:700;color:var(--primary);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;}
+.section-h2{font-family:var(--font-head);font-size:32px;font-weight:800;color:var(--ink);margin-bottom:8px;letter-spacing:-.5px;}
+.section-sub{font-size:15px;color:var(--ink3);margin-bottom:40px;}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+.feat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px;transition:all .2s;}
+.feat-card:hover{border-color:var(--primary);box-shadow:var(--shadow-md);transform:translateY(-2px);}
+.feat-icon{width:44px;height:44px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:14px;}
+.feat-title{font-family:var(--font-head);font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px;}
+.feat-desc{font-size:13px;color:var(--ink3);line-height:1.65;}
+
+/* PRICING */
+.pricing-section{padding:80px 2rem;background:var(--surface2);}
+.pricing-inner{max-width:960px;margin:0 auto;}
+.price-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-top:40px;}
+.price-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:28px;position:relative;}
+.price-card.best{border-color:var(--primary);box-shadow:0 0 0 4px rgba(99,102,241,.07);}
+.price-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;font-size:11px;font-weight:700;padding:3px 16px;border-radius:20px;white-space:nowrap;}
+.price-name{font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--ink3);margin-bottom:10px;}
+.price-amt{font-family:var(--font-head);font-size:44px;font-weight:800;color:var(--ink);line-height:1;}
+.price-period{font-size:12px;color:var(--ink4);margin-top:4px;margin-bottom:20px;}
+.price-list{list-style:none;margin-bottom:24px;}
+.price-list li{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink2);padding:7px 0;border-bottom:1px solid var(--border);}
+.price-list li:last-child{border:none;}
+.price-list .tk{color:var(--green);font-size:12px;}
+.price-list .cx{color:var(--ink4);font-size:12px;}
+.btn-price-main{width:100%;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:var(--r-sm);font-family:var(--font-head);font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;}
+.btn-price-main:hover{background:#4f46e5;}
+.btn-price-out{width:100%;padding:12px;background:transparent;color:var(--ink);border:1.5px solid var(--border2);border-radius:var(--r-sm);font-family:var(--font-head);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;}
+.btn-price-out:hover{border-color:var(--primary);color:var(--primary);}
+
+/* FOOTER */
+.land-footer{border-top:1px solid var(--border);padding:24px 2rem;text-align:center;background:var(--surface);}
+.land-footer-logo{font-family:var(--font-head);font-size:16px;font-weight:800;color:var(--ink);margin-bottom:4px;}
+.land-footer-logo span{color:var(--primary);}
+.land-footer p{font-size:12px;color:var(--ink4);}
+
+/* ── APP ─────────────────────────────────────── */
+.app-layout{display:none;min-height:100vh;background:var(--surface2);}
+.app-layout.show{display:flex;flex-direction:column;}
+
+/* App nav */
+.app-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5rem;position:sticky;top:0;z-index:50;}
+.app-nav-inner{display:flex;align-items:center;justify-content:space-between;height:58px;max-width:1200px;margin:0 auto;}
+.app-logo{display:flex;align-items:center;gap:9px;font-family:var(--font-head);font-weight:800;font-size:18px;color:var(--ink);text-decoration:none;cursor:pointer;}
+.app-logo-icon{width:32px;height:32px;background:var(--primary);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800;}
+.app-logo span{color:var(--primary);}
+.app-nav-actions{display:flex;align-items:center;gap:10px;}
+.api-badge{display:flex;align-items:center;gap:7px;font-size:12px;padding:6px 12px;border-radius:var(--r-xs);cursor:pointer;border:1.5px solid var(--border);background:var(--surface2);color:var(--ink3);transition:all .2s;}
+.api-badge:hover{border-color:var(--primary);color:var(--primary);}
+.api-badge.active{border-color:var(--green);background:var(--green-soft);color:var(--green);}
+.api-badge-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+.save-indicator{font-size:11.5px;color:var(--green);display:flex;align-items:center;gap:5px;opacity:0;transition:opacity .3s;}
+.save-indicator.show{opacity:1;}
+
+/* Step layout */
+.app-body{display:flex;flex:1;max-width:1200px;margin:0 auto;width:100%;padding:24px 1.5rem;gap:22px;}
+
+/* Sidebar */
+.sidebar{width:230px;flex-shrink:0;}
+.sidebar-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;position:sticky;top:82px;}
+.sidebar-title{font-size:10px;font-weight:700;color:var(--ink4);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;}
+.step-list{display:flex;flex-direction:column;gap:2px;}
+.step-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r-xs);cursor:pointer;transition:all .15s;}
+.step-item:hover{background:var(--surface3);}
+.step-item.active{background:var(--primary-soft);}
+.step-item.done .step-num{background:var(--green);color:#fff;}
+.step-item.active .step-num{background:var(--primary);color:#fff;}
+.step-num{width:24px;height:24px;border-radius:50%;background:var(--surface3);border:1.5px solid var(--border);color:var(--ink3);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;}
+.step-label{font-size:12.5px;color:var(--ink3);font-weight:500;transition:color .15s;}
+.step-item.active .step-label{color:var(--primary);font-weight:600;}
+.step-item.done .step-label{color:var(--green);}
+.sidebar-score{margin-top:18px;padding-top:16px;border-top:1px solid var(--border);}
+.score-label{font-size:10px;font-weight:700;color:var(--ink4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.score-bar-wrap{height:8px;background:var(--surface3);border-radius:4px;overflow:hidden;margin-bottom:6px;}
+.score-bar-fill{height:100%;border-radius:4px;transition:width .5s ease;}
+.score-pct-row{display:flex;justify-content:space-between;font-size:11px;color:var(--ink4);}
+
+/* Main content */
+.main-content{flex:1;min-width:0;}
+.step-panel{display:none;}
+.step-panel.active{display:block;animation:fadeUp .25s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+/* Step header */
+.step-header{margin-bottom:22px;}
+.step-chip{display:inline-flex;align-items:center;gap:6px;background:var(--primary-soft);color:var(--primary);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:10px;}
+.step-h2{font-family:var(--font-head);font-size:22px;font-weight:800;color:var(--ink);margin-bottom:5px;}
+.step-sub{font-size:13px;color:var(--ink3);}
+
+/* Cards */
+.scard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px;margin-bottom:14px;box-shadow:var(--shadow);}
+.scard-head{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.scard-icon{width:34px;height:34px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.sc-indigo{background:var(--primary-light);color:var(--primary);}
+.sc-green{background:rgba(16,185,129,.12);color:var(--green);}
+.sc-amber{background:var(--amber-soft);color:var(--amber);}
+.sc-red{background:var(--red-soft);color:var(--red);}
+.sc-blue{background:var(--blue-soft);color:var(--blue);}
+.scard-title{font-family:var(--font-head);font-size:15px;font-weight:700;color:var(--ink);}
+.scard-sub{font-size:12px;color:var(--ink4);margin-top:1px;}
+
+/* Form elements */
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:6px;letter-spacing:.01em;}
+.field label .opt{font-weight:400;color:var(--ink4);margin-left:4px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+input[type=text],input[type=email],input[type=password],input[type=tel],textarea,select{
+  width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r-sm);
+  padding:11px 14px;font-size:13.5px;color:var(--ink);font-family:var(--font-body);
+  outline:none;transition:all .2s;
+}
+input::placeholder,textarea::placeholder{color:var(--ink4);}
+input:focus,textarea:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.1);}
+textarea{resize:vertical;min-height:100px;line-height:1.65;}
+select{cursor:pointer;}
+select option{background:var(--surface);}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--ink);font-family:var(--font-body);transition:all .18s;}
+.btn:hover{background:var(--surface3);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary);}
+.btn-primary:hover{background:#4f46e5;}
+.btn-ai{background:var(--primary-soft);border-color:rgba(99,102,241,.25);color:var(--primary);}
+.btn-ai:hover{background:rgba(99,102,241,.14);}
+.btn-green{background:var(--green-soft);border-color:rgba(16,185,129,.25);color:var(--green);}
+.btn-green:hover{background:rgba(16,185,129,.15);}
+.btn-blue{background:var(--blue-soft);border-color:rgba(59,130,246,.25);color:var(--blue);}
+.btn-word{background:rgba(37,99,235,.08);border-color:rgba(37,99,235,.2);color:#2563eb;}
+.btn-wa{background:rgba(37,211,102,.08);border-color:rgba(37,211,102,.2);color:#16a34a;}
+.btn-wa:hover{background:rgba(37,211,102,.15);}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+
+/* AI result box */
+.ai-box{background:linear-gradient(to bottom right,#f5f3ff,#eff6ff);border:1.5px solid rgba(99,102,241,.2);border-radius:var(--r-sm);padding:16px;font-size:13px;line-height:1.8;color:var(--ink2);margin-top:12px;white-space:pre-wrap;display:none;position:relative;}
+.ai-box::before{content:'✦ AI';position:absolute;top:-9px;left:14px;background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:1px 9px;border-radius:5px;}
+.ai-box.loading{color:var(--ink4);font-style:italic;}
+.typing::after{content:'▋';animation:blink .9s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+
+/* ATS ring */
+.ats-wrap{display:flex;align-items:center;gap:18px;margin-bottom:14px;}
+.ats-circle{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:20px;font-weight:800;flex-shrink:0;border:3px solid var(--border);}
+.ats-circle.high{background:rgba(16,185,129,.08);color:var(--green);border-color:var(--green);}
+.ats-circle.mid{background:var(--amber-soft);color:var(--amber);border-color:var(--amber);}
+.ats-circle.low{background:var(--red-soft);color:var(--red);border-color:var(--red);}
+.ats-circle.empty{background:var(--surface3);color:var(--ink4);border:2px dashed var(--border2);}
+.ats-info .ats-status{font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--ink);}
+.ats-info .ats-hint{font-size:12px;color:var(--ink3);margin-top:3px;line-height:1.5;}
+.prog{height:6px;background:var(--surface3);border-radius:3px;overflow:hidden;margin:10px 0;}
+.prog-fill{height:100%;border-radius:3px;transition:width .7s ease;}
+
+/* Step nav buttons */
+.step-nav{display:flex;align-items:center;justify-content:space-between;margin-top:24px;padding-top:20px;border-top:1px solid var(--border);}
+.btn-lg{padding:12px 28px;border-radius:var(--r-sm);font-family:var(--font-head);font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:8px;}
+.btn-lg-primary{background:var(--primary);color:#fff;}
+.btn-lg-primary:hover{background:#4f46e5;transform:translateY(-1px);box-shadow:0 6px 18px rgba(99,102,241,.3);}
+.btn-lg-back{background:var(--surface3);color:var(--ink2);}
+.btn-lg-back:hover{background:var(--border);}
+
+/* Import area */
+.import-zone{border:2px dashed var(--border2);border-radius:var(--r);padding:28px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface2);}
+.import-zone:hover,.import-zone.over{border-color:var(--primary);background:var(--primary-soft);}
+.import-zone-icon{font-size:36px;margin-bottom:10px;}
+
+/* Templates */
+.tpl-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+.tpl-card{border:2px solid var(--border);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:all .2s;}
+.tpl-card:hover{border-color:var(--primary);}
+.tpl-card.sel{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.15);}
+.tpl-thumb{height:90px;padding:10px;display:flex;flex-direction:column;gap:5px;}
+.tpl-t1{background:linear-gradient(135deg,#1e1b4b,#312e81);}
+.tpl-t2{background:#ffffff;border-bottom:1px solid var(--border);}
+.tpl-t3{background:linear-gradient(to bottom,#fff9f0,#fff);}
+.tpl-name{padding:8px 10px;font-size:12px;font-weight:700;color:var(--ink);background:var(--surface);border-top:1px solid var(--border);}
+.tpl-sel-badge{display:none;font-size:10px;color:var(--primary);font-weight:700;}
+.tpl-card.sel .tpl-sel-badge{display:inline;}
+.tl{height:5px;border-radius:3px;background:rgba(255,255,255,.3);}
+.tl.thick{height:9px;width:60%;}
+.tl.thin{width:80%;}
+.tl.short{width:40%;}
+.tl2{height:5px;border-radius:3px;background:#e2e8f0;}
+.tl2.thick{height:9px;width:55%;background:#1e293b;}
+.tl2.accent{background:#6366f1;width:35%;}
+
+/* Resume preview */
+.preview-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.preview-toolbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface2);}
+.preview-toolbar-title{font-size:12.5px;font-weight:600;color:var(--ink2);display:flex;align-items:center;gap:6px;}
+.dl-btns{display:flex;gap:7px;}
+.preview-inner{padding:20px;}
+
+/* Resume templates */
+.rp-m{font-family:'Inter',sans-serif;color:#0f172a;font-size:12px;line-height:1.6;}
+.rp-m .rp-name{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#0f172a;margin-bottom:3px;}
+.rp-m .rp-bar{height:3px;background:linear-gradient(90deg,#6366f1,#818cf8);border-radius:2px;margin-bottom:10px;}
+.rp-m .rp-contact{font-size:11px;color:#475569;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:12px;}
+.rp-m .rp-sec h2{font-size:10px;font-weight:700;color:#6366f1;letter-spacing:.09em;text-transform:uppercase;border-bottom:1px solid #e0e7ff;padding-bottom:3px;margin:12px 0 7px;}
+.rp-m .rp-sec p,.rp-m .rp-sec li{font-size:11.5px;color:#334155;line-height:1.65;}
+.rp-m .rp-sec ul{padding-left:14px;}
+.rp-m .rp-skill{display:inline-block;background:#ede9fe;color:#4f46e5;font-size:10px;padding:2px 9px;border-radius:5px;font-weight:600;margin:2px;}
+.rp-m .rp-edu-row{display:flex;justify-content:space-between;align-items:baseline;}
+.rp-m .rp-edu-t{font-size:12px;font-weight:700;color:#0f172a;}
+.rp-m .rp-edu-s,.rp-m .rp-edu-y{font-size:11px;color:#64748b;}
+
+.rp-c{font-family:Georgia,serif;color:#111;font-size:12px;line-height:1.65;}
+.rp-c .rp-name{font-size:21px;font-weight:bold;text-align:center;color:#111;margin-bottom:3px;}
+.rp-c .rp-contact{font-size:11px;color:#444;text-align:center;margin-bottom:14px;}
+.rp-c .rp-contact span{margin:0 7px;}
+.rp-c .rp-sec h2{font-size:10px;font-weight:bold;color:#111;text-transform:uppercase;letter-spacing:.1em;border-bottom:2px solid #111;padding-bottom:2px;margin:12px 0 7px;}
+.rp-c .rp-sec p,.rp-c .rp-sec li{font-size:11.5px;color:#222;line-height:1.6;}
+.rp-c .rp-sec ul{padding-left:14px;}
+.rp-c .rp-skill{font-size:11.5px;color:#111;}
+.rp-c .rp-edu-row{display:flex;justify-content:space-between;}
+.rp-c .rp-edu-t{font-size:12px;font-weight:bold;}
+.rp-c .rp-edu-s,.rp-c .rp-edu-y{font-size:11px;color:#555;}
+
+.rp-n{font-family:'Inter',sans-serif;color:#0f172a;font-size:12px;line-height:1.6;display:flex;gap:0;}
+.rp-n .rp-sidebar{width:5px;background:linear-gradient(to bottom,#f97316,#fb923c);border-radius:3px;flex-shrink:0;margin-right:14px;}
+.rp-n .rp-main{flex:1;}
+.rp-n .rp-name{font-family:'Outfit',sans-serif;font-size:21px;font-weight:800;color:#0f172a;margin-bottom:3px;}
+.rp-n .rp-contact{font-size:11px;color:#475569;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:10px;}
+.rp-n .rp-sec h2{font-size:10px;font-weight:700;color:#ea580c;text-transform:uppercase;letter-spacing:.08em;margin:12px 0 7px;}
+.rp-n .rp-sec p,.rp-n .rp-sec li{font-size:11.5px;color:#334155;line-height:1.65;}
+.rp-n .rp-sec ul{padding-left:14px;}
+.rp-n .rp-skill{display:inline-block;border:1px solid #e2e8f0;color:#374151;font-size:10px;padding:2px 8px;border-radius:4px;margin:2px;}
+.rp-n .rp-edu-row{display:flex;justify-content:space-between;}
+.rp-n .rp-edu-t{font-size:12px;font-weight:700;}
+.rp-n .rp-edu-s,.rp-n .rp-edu-y{font-size:11px;color:#64748b;}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(6px);z-index:200;display:none;align-items:center;justify-content:center;padding:1.5rem;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.modal-h{font-family:var(--font-head);font-size:18px;font-weight:800;color:var(--ink);}
+.modal-x{background:none;border:1.5px solid var(--border);color:var(--ink3);border-radius:var(--r-xs);width:30px;height:30px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;}
+.modal-x:hover{background:var(--surface3);}
+
+/* API key toast */
+.api-panel{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px;}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 22px;border-radius:var(--r-sm);font-size:13px;z-index:999;box-shadow:var(--shadow-lg);pointer-events:none;opacity:0;transition:opacity .3s;}
+.toast.show{opacity:1;}
+
+/* Checklist */
+.cklist{list-style:none;}
+.cklist li{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--ink3);}
+.cklist li:last-child{border:none;}
+.ck{width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;transition:all .2s;}
+.ck.done{background:var(--green);border-color:var(--green);color:#fff;}
+
+/* Job cards */
+.job-card{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:14px;transition:all .2s;}
+.job-card:hover{border-color:var(--primary);transform:translateY(-1px);}
+.job-co{font-size:11px;color:var(--ink4);margin-bottom:3px;}
+.job-title{font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px;}
+.tag{font-size:10px;padding:3px 9px;border-radius:6px;font-weight:600;display:inline-block;}
+.tag-p{background:var(--primary-light);color:var(--primary);}
+.tag-g{background:rgba(16,185,129,.1);color:var(--green);}
+.tag-a{background:var(--amber-soft);color:var(--amber);}
+
+/* Mobile */
+@media(max-width:760px){
+  .sidebar{display:none;}
+  .app-body{padding:16px 1rem;}
+  .field-row{grid-template-columns:1fr;}
+  .tpl-row{grid-template-columns:1fr 1fr;}
+  .feat-grid,.price-grid{grid-template-columns:1fr;}
+  .hero-h1{font-size:34px;}
+  .hero-section{padding:50px 1.5rem;}
+  .btn-row{flex-direction:column;}
+  .dl-btns{flex-wrap:wrap;}
+  .dash-grid{grid-template-columns:1fr!important;}
+  .dash-hero-inner{flex-direction:column;gap:12px;text-align:center;}
+  .dash-stat-row{justify-content:center;}
+}
+
+/* ── DASHBOARD ─────────────────────────────────── */
+.dashboard{display:none;min-height:100vh;background:#f5f4ff;font-family:'Inter',sans-serif;}
+.dashboard.show{display:block;}
+
+.dash-nav{background:#fff;border-bottom:1px solid #e8e6ff;padding:0 2rem;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(99,102,241,.07);}
+.dash-nav-inner{display:flex;align-items:center;justify-content:space-between;height:60px;max-width:1180px;margin:0 auto;}
+.dash-logo{display:flex;align-items:center;gap:10px;font-family:'Outfit',sans-serif;font-weight:800;font-size:19px;color:#0f172a;cursor:pointer;}
+.dash-logo-mark{width:34px;height:34px;background:linear-gradient(135deg,#6366f1,#818cf8);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800;box-shadow:0 3px 10px rgba(99,102,241,.35);}
+.dash-logo span{color:#6366f1;}
+.dash-nav-right{display:flex;align-items:center;gap:12px;}
+.dash-user-chip{display:flex;align-items:center;gap:8px;background:#f5f4ff;border:1.5px solid #e0deff;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;color:#4f46e5;cursor:pointer;}
+.dash-user-chip:hover{background:#ede9fe;}
+.dash-user-avatar{width:26px;height:26px;background:linear-gradient(135deg,#6366f1,#a78bfa);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800;}
+.dash-api-btn{display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 13px;font-size:12px;color:#64748b;cursor:pointer;transition:all .2s;}
+.dash-api-btn:hover{border-color:#6366f1;color:#6366f1;}
+.dash-api-btn.active{border-color:#10b981;background:rgba(16,185,129,.06);color:#10b981;}
+
+.dash-hero{background:linear-gradient(135deg,#6366f1 0%,#4f46e5 40%,#7c3aed 100%);padding:36px 2rem;}
+.dash-hero-inner{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;}
+.dash-welcome{color:#fff;}
+.dash-welcome-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:600;color:rgba(255,255,255,.9);margin-bottom:12px;letter-spacing:.05em;}
+.dash-welcome h1{font-family:'Outfit',sans-serif;font-size:clamp(24px,4vw,34px);font-weight:800;line-height:1.2;margin-bottom:8px;}
+.dash-welcome p{font-size:14px;color:rgba(255,255,255,.75);max-width:480px;}
+.dash-stat-row{display:flex;gap:0;margin-top:0;}
+.dash-stat-pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:12px 20px;text-align:center;}
+.dash-stat-pill+.dash-stat-pill{margin-left:10px;}
+.dash-stat-pill .num{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#fff;}
+.dash-stat-pill .lbl{font-size:11px;color:rgba(255,255,255,.65);margin-top:1px;}
+.dash-ats-free-badge{background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);border-radius:12px;padding:14px 20px;text-align:center;min-width:140px;}
+.dash-ats-free-badge .big{font-family:'Outfit',sans-serif;font-size:28px;font-weight:800;color:#fff;}
+.dash-ats-free-badge .sub{font-size:11px;color:rgba(255,255,255,.75);margin-top:2px;}
+.dash-ats-free-badge .tag{background:rgba(16,185,129,.25);color:#6ee7b7;border:1px solid rgba(110,231,183,.3);border-radius:6px;padding:3px 10px;font-size:10px;font-weight:700;letter-spacing:.06em;display:inline-block;margin-top:6px;}
+
+.dash-body{max-width:1180px;margin:0 auto;padding:32px 2rem;}
+.dash-section-label{font-size:11px;font-weight:700;color:#6366f1;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.dash-section-label::after{content:'';flex:1;height:1px;background:linear-gradient(to right,#e0deff,transparent);}
+
+/* Card Grid */
+.dash-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:40px;}
+.dash-grid.two-col{grid-template-columns:repeat(2,1fr);}
+
+/* Feature Cards */
+.dcard{background:#fff;border:1.5px solid #e8e6ff;border-radius:16px;overflow:hidden;transition:all .25s;cursor:pointer;position:relative;}
+.dcard:hover{border-color:#6366f1;box-shadow:0 8px 28px rgba(99,102,241,.15);transform:translateY(-3px);}
+.dcard.free-card{border-color:#10b981;}
+.dcard.free-card:hover{border-color:#059669;box-shadow:0 8px 28px rgba(16,185,129,.18);}
+.dcard.locked{opacity:.7;}
+.dcard.locked:hover{transform:none;box-shadow:none;border-color:#e8e6ff;}
+.dcard-header{padding:20px 20px 14px;display:flex;align-items:flex-start;justify-content:space-between;}
+.dcard-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.dcard-badges{display:flex;flex-direction:column;align-items:flex-end;gap:5px;}
+.dcard-free-tag{background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;border-radius:6px;font-size:10px;font-weight:700;padding:3px 9px;letter-spacing:.05em;}
+.dcard-lock-tag{background:#f8fafc;color:#94a3b8;border:1px solid #e2e8f0;border-radius:6px;font-size:10px;font-weight:600;padding:3px 9px;}
+.dcard-premium-tag{background:#ede9fe;color:#6366f1;border:1px solid #c4b5fd;border-radius:6px;font-size:10px;font-weight:700;padding:3px 9px;}
+.dcard-body{padding:0 20px 20px;}
+.dcard-title{font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;color:#0f172a;margin-bottom:6px;}
+.dcard-desc{font-size:12.5px;color:#64748b;line-height:1.6;margin-bottom:14px;}
+.dcard-action{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;border-radius:9px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s;}
+.dcard-action:hover{background:linear-gradient(135deg,#4f46e5,#3730a3);transform:translateY(-1px);}
+.dcard.free-card .dcard-action{background:linear-gradient(135deg,#10b981,#059669);}
+.dcard.free-card .dcard-action:hover{background:linear-gradient(135deg,#059669,#047857);}
+.dcard-action.locked-btn{background:#f1f5f9;color:#94a3b8;cursor:default;}
+.dcard-action.locked-btn:hover{transform:none;background:#f1f5f9;}
+
+/* ATS Card expanded panel */
+.dcard-expand{display:none;border-top:1.5px solid #e8e6ff;background:#f9f8ff;padding:20px;}
+.dcard.expanded .dcard-expand{display:block;}
+.dcard.expanded{transform:none!important;border-color:#6366f1;}
+.dcard.free-card.expanded{border-color:#10b981;}
+.dcard.free-card.expanded .dcard-expand{border-top-color:#d1fae5;background:#f0fdf9;}
+
+/* ATS Mini UI inside card */
+.ats-card-tabs{display:flex;gap:0;margin-bottom:16px;background:#fff;border:1.5px solid #e8e6ff;border-radius:10px;overflow:hidden;}
+.ats-card-tab{flex:1;padding:9px;text-align:center;font-size:12px;font-weight:600;color:#64748b;cursor:pointer;border:none;background:none;transition:all .2s;}
+.ats-card-tab.active{background:#6366f1;color:#fff;}
+.dcard.free-card .ats-card-tab.active{background:#10b981;}
+.ats-upload-zone{border:2px dashed #c4b5fd;border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:#faf9ff;}
+.ats-upload-zone:hover,.ats-upload-zone.over{border-color:#6366f1;background:#ede9fe;}
+.dcard.free-card .ats-upload-zone{border-color:#6ee7b7;background:#f0fdf9;}
+.dcard.free-card .ats-upload-zone:hover{border-color:#10b981;background:#ecfdf5;}
+.ats-upload-icon{font-size:28px;margin-bottom:6px;}
+.ats-upload-txt{font-size:13px;font-weight:600;color:#4f46e5;margin-bottom:3px;}
+.dcard.free-card .ats-upload-txt{color:#059669;}
+.ats-upload-sub{font-size:11px;color:#94a3b8;}
+.ats-jd-input{width:100%;min-height:90px;font-family:'Inter',sans-serif;font-size:12.5px;padding:10px 12px;border:1.5px solid #e8e6ff;border-radius:9px;color:#0f172a;resize:vertical;margin-bottom:10px;background:#fff;outline:none;}
+.ats-jd-input:focus{border-color:#6366f1;}
+.dcard.free-card .ats-jd-input:focus{border-color:#10b981;}
+.ats-run-btn{width:100%;padding:11px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;border-radius:9px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.ats-run-btn:hover{background:linear-gradient(135deg,#4f46e5,#3730a3);}
+.dcard.free-card .ats-run-btn{background:linear-gradient(135deg,#10b981,#059669);}
+.dcard.free-card .ats-run-btn:hover{background:linear-gradient(135deg,#059669,#047857);}
+
+/* ATS Result mini */
+.ats-mini-result{background:#fff;border:1.5px solid #e8e6ff;border-radius:10px;padding:16px;margin-top:12px;}
+.ats-score-row{display:flex;align-items:center;gap:14px;margin-bottom:10px;}
+.ats-score-ring{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;flex-shrink:0;}
+.ats-score-ring.high{background:rgba(16,185,129,.1);color:#059669;border:3px solid #10b981;}
+.ats-score-ring.mid{background:rgba(245,158,11,.1);color:#d97706;border:3px solid #f59e0b;}
+.ats-score-ring.low{background:rgba(239,68,68,.1);color:#dc2626;border:3px solid #ef4444;}
+.ats-score-ring.empty{background:#f8fafc;color:#94a3b8;border:3px solid #e2e8f0;font-size:14px;}
+.ats-score-info .title{font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#0f172a;margin-bottom:3px;}
+.ats-score-info .sub{font-size:11.5px;color:#64748b;line-height:1.5;}
+.ats-mini-feedback{font-size:12px;color:#334155;line-height:1.65;white-space:pre-wrap;max-height:200px;overflow-y:auto;padding-top:10px;border-top:1px solid #f1f5f9;}
+.ats-free-cta{background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #fbbf24;border-radius:10px;padding:14px;margin-top:12px;text-align:center;}
+.ats-free-cta .head{font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#92400e;margin-bottom:4px;}
+.ats-free-cta .sub{font-size:12px;color:#78350f;margin-bottom:10px;}
+.ats-free-cta .buy-btn{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+
+/* Resume builder card special */
+.dcard.builder-card{grid-column:span 1;}
+.dcard-progress-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+.dcard-prog-bar{flex:1;height:5px;background:#e8e6ff;border-radius:3px;overflow:hidden;}
+.dcard-prog-fill{height:100%;background:linear-gradient(90deg,#6366f1,#818cf8);border-radius:3px;transition:width .5s;}
+.dcard-prog-pct{font-size:11px;font-weight:700;color:#6366f1;white-space:nowrap;}
+
+/* Quick action strip */
+.dash-quick-strip{display:flex;gap:12px;margin-bottom:28px;overflow-x:auto;padding-bottom:4px;}
+.dash-quick-strip::-webkit-scrollbar{height:3px;}
+.dash-quick-strip::-webkit-scrollbar-thumb{background:#c4b5fd;border-radius:2px;}
+.dquick{display:flex;align-items:center;gap:9px;background:#fff;border:1.5px solid #e8e6ff;border-radius:10px;padding:12px 18px;white-space:nowrap;cursor:pointer;transition:all .2s;flex-shrink:0;}
+.dquick:hover{border-color:#6366f1;background:#f5f4ff;}
+.dquick-icon{font-size:18px;}
+.dquick-label{font-size:13px;font-weight:600;color:#0f172a;}
+.dquick-sub{font-size:11px;color:#94a3b8;}
+
+/* Tip banner */
+.dash-tip{background:linear-gradient(135deg,#ede9fe,#e0e7ff);border:1.5px solid #c4b5fd;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:28px;}
+.dash-tip-icon{font-size:24px;flex-shrink:0;}
+.dash-tip-text .head{font-size:13.5px;font-weight:700;color:#3730a3;margin-bottom:3px;}
+.dash-tip-text .body{font-size:12.5px;color:#4f46e5;line-height:1.5;}
+
+/* Resume strength in dashboard */
+.dash-strength-card{background:#fff;border:1.5px solid #e8e6ff;border-radius:14px;padding:20px;}
+.ds-title{font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px;}
+.ds-sub{font-size:12px;color:#94a3b8;margin-bottom:14px;}
+.ds-checks{display:flex;flex-direction:column;gap:6px;}
+.ds-check{display:flex;align-items:center;gap:10px;font-size:12.5px;color:#64748b;padding:5px 0;}
+.ds-check .ck2{width:18px;height:18px;border-radius:50%;border:2px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;}
+.ds-check .ck2.done{background:#10b981;border-color:#10b981;color:#fff;}
+
+/* Spinner */
+@keyframes spin{to{transform:rotate(360deg);}}
+.spin{animation:spin .7s linear infinite;display:inline-block;}
+
+/* Slide in for expanded card */
+@keyframes slideDown{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+.dcard-expand{animation:slideDown .2s ease;}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════════════════════════════
+     LANDING
+═══════════════════════════════════════ -->
+<div id="landing">
+  <div class="land-nav-outer">
+    <div class="land-nav-inner">
+      <a class="land-logo" href="#">
+        <div class="land-logo-icon">R</div>
+        Resumiq<span>.</span>
+      </a>
+      <div class="land-links">
+        <button class="land-link" onclick="landAnchor('#features')">Features</button>
+        <button class="land-link" onclick="landAnchor('#pricing')">Pricing</button>
+      </div>
+      <div class="land-cta-row">
+        <button class="btn-land btn-land-outline" onclick="enterApp()">Login</button>
+        <button class="btn-land btn-land-fill" onclick="enterApp()">Start Free →</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-section">
+    <div class="hero-content">
+      <div class="hero-chip"><div class="hero-chip-dot"></div>Free for students · ₹100 one-time for full access</div>
+      <h1 class="hero-h1">Your AI Resume<br>Builder for <span class="hl">Getting Hired</span></h1>
+      <p class="hero-sub">Build a job-ready resume in minutes. AI writes your sections, checks your ATS score, matches you to jobs, and preps you for interviews.</p>
+      <div class="hero-btns">
+        <button class="btn-hero-main" onclick="enterApp()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          Build My Resume — Free
+        </button>
+        <button class="btn-hero-sec" onclick="landAnchor('#pricing')">See Pricing</button>
+      </div>
+      <div class="hero-stats">
+        <div class="h-stat"><div class="num">2,400+</div><div class="lbl">Resumes built</div></div>
+        <div class="h-stat"><div class="num">89%</div><div class="lbl">ATS pass rate</div></div>
+        <div class="h-stat"><div class="num">₹100</div><div class="lbl">One-time · lifetime</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="features">
+    <div class="features-section">
+      <div class="section-label">Everything you need</div>
+      <h2 class="section-h2">Built for Indian students</h2>
+      <p class="section-sub">Every tool you need to get hired — all in one place, for ₹100.</p>
+      <div class="feat-grid">
+        <div class="feat-card"><div class="feat-icon" style="background:#ede9fe;">🤖</div><div class="feat-title">AI Resume Builder</div><div class="feat-desc">Type your raw details. AI rewrites every section with strong action verbs and numbers that impress recruiters.</div></div>
+        <div class="feat-card"><div class="feat-icon" style="background:rgba(16,185,129,.1);">📂</div><div class="feat-title">Import Old Resume</div><div class="feat-desc">Already have a resume? Upload it. AI reads it, fills all fields, and enhances every section automatically.</div></div>
+        <div class="feat-card"><div class="feat-icon" style="background:rgba(245,158,11,.1);">📊</div><div class="feat-title">ATS Score Checker</div><div class="feat-desc">Paste any job description. Get an instant score, missing keywords, and specific fixes to pass ATS filters.</div></div>
+        <div class="feat-card"><div class="feat-icon" style="background:rgba(59,130,246,.1);">🎯</div><div class="feat-title">Smart Job Matcher</div><div class="feat-desc">AI scans your skills and recommends 6 specific roles with salary ranges and which platform to apply on.</div></div>
+        <div class="feat-card"><div class="feat-icon" style="background:rgba(239,68,68,.1);">💼</div><div class="feat-title">LinkedIn Optimizer</div><div class="feat-desc">AI writes your headline, About section, and tells you which skills to add for maximum recruiter visibility.</div></div>
+        <div class="feat-card"><div class="feat-icon" style="background:rgba(99,102,241,.1);">🎤</div><div class="feat-title">Mock Interview Prep</div><div class="feat-desc">Get 10 likely interview questions based on your resume and job description — with tips on how to answer each one.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pricing" style="padding:60px 2rem;background:var(--surface);">
+    <div class="pricing-inner">
+      <div class="section-label" style="text-align:center;">Pricing</div>
+      <h2 class="section-h2" style="text-align:center;">Simple, honest pricing</h2>
+      <p class="section-sub" style="text-align:center;">One payment. Lifetime access. No subscriptions, no hidden fees.</p>
+      <div class="price-grid">
+        <div class="price-card">
+          <div class="price-name">Free Trial</div>
+          <div class="price-amt">₹0</div>
+          <div class="price-period">No card needed</div>
+          <ul class="price-list">
+            <li><span class="tk">✓</span> Build 1 resume</li>
+            <li><span class="tk">✓</span> 1 ATS check</li>
+            <li><span class="cx">✗</span> Import old resume</li>
+            <li><span class="cx">✗</span> LinkedIn optimizer</li>
+            <li><span class="cx">✗</span> Mock interview prep</li>
+            <li><span class="cx">✗</span> Download Word/PDF</li>
+          </ul>
+          <button class="btn-price-out" onclick="enterApp()">Try Free</button>
+        </div>
+        <div class="price-card best">
+          <div class="price-badge">Most Popular</div>
+          <div class="price-name">Student</div>
+          <div class="price-amt">₹100</div>
+          <div class="price-period">One-time · lifetime access</div>
+          <ul class="price-list">
+            <li><span class="tk">✓</span> Unlimited resumes</li>
+            <li><span class="tk">✓</span> Unlimited ATS checks</li>
+            <li><span class="tk">✓</span> Import + AI enhance</li>
+            <li><span class="tk">✓</span> LinkedIn optimizer</li>
+            <li><span class="tk">✓</span> Mock interview prep</li>
+            <li><span class="tk">✓</span> Download Word &amp; PDF</li>
+          </ul>
+          <button class="btn-price-main" onclick="openPayModal()">Get Full Access →</button>
+        </div>
+        <div class="price-card">
+          <div class="price-name">Batch (College)</div>
+          <div class="price-amt">₹70</div>
+          <div class="price-period">Per student · min 20 students</div>
+          <ul class="price-list">
+            <li><span class="tk">✓</span> Everything in Student</li>
+            <li><span class="tk">✓</span> Teacher dashboard</li>
+            <li><span class="tk">✓</span> Progress tracking</li>
+            <li><span class="tk">✓</span> Priority support</li>
+            <li><span class="tk">✓</span> Placement season ready</li>
+          </ul>
+          <button class="btn-price-out">Contact Us</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="land-footer">
+    <div class="land-footer-logo">Resumiq<span>.</span></div>
+    <p>AI Career Platform for Students · Made with ❤ in India</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     DASHBOARD (post-login home)
+═══════════════════════════════════════ -->
+<div class="dashboard" id="dashboard">
+  <!-- Nav -->
+  <nav class="dash-nav">
+    <div class="dash-nav-inner">
+      <div class="dash-logo" onclick="showLanding()">
+        <div class="dash-logo-mark">R</div>
+        Resumiq<span>.</span>
+      </div>
+      <div class="dash-nav-right">
+        <div class="save-indicator" id="dash-save-badge" style="font-size:11.5px;color:#10b981;display:flex;align-items:center;gap:5px;opacity:0;transition:opacity .3s;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Saved
+        </div>
+        <button class="dash-api-btn" id="dash-api-btn" onclick="toggleApiPanel();toggleDashApiPanel()">
+          <div style="width:6px;height:6px;border-radius:50%;background:currentColor;"></div>
+          <span id="dash-api-text">Add API Key</span>
+        </button>
+        <div class="dash-user-chip" id="dash-user-chip" onclick="goToDashboard()">
+          <div class="dash-user-avatar" id="dash-avatar">S</div>
+          <span id="dash-user-name">Student</span>
+        </div>
+        <button class="btn btn-primary" onclick="openPayModal()" id="dash-unlock-btn" style="font-size:12px;padding:7px 14px;display:none;">🔓 Unlock ₹100</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- API panel (shared) -->
+  <div id="dash-api-panel-wrap" style="display:none;background:#fff;border-bottom:1px solid #e8e6ff;padding:12px 2rem;">
+    <div style="max-width:1180px;margin:0 auto;">
+      <div style="background:#f5f4ff;border:1.5px solid #c4b5fd;border-radius:12px;padding:16px;">
+        <div style="font-size:13px;font-weight:600;color:#0f172a;margin-bottom:6px;">🔑 Anthropic API Key — needed for AI features</div>
+        <div style="font-size:12px;color:#64748b;margin-bottom:10px;">Get a free key at <a href="https://console.anthropic.com" target="_blank" style="color:#6366f1;">console.anthropic.com</a>. Stored in your browser only — never sent to us.</div>
+        <div style="display:flex;gap:9px;">
+          <input type="password" id="dash-api-input" placeholder="sk-ant-api03-..." style="flex:1;font-family:monospace;font-size:12px;padding:8px 12px;border:1.5px solid #c4b5fd;border-radius:8px;outline:none;"/>
+          <button onclick="saveDashApiKey()" style="background:#6366f1;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;">Save & Enable AI</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hero Banner -->
+  <div class="dash-hero">
+    <div class="dash-hero-inner">
+      <div class="dash-welcome">
+        <div class="dash-welcome-tag">✦ YOUR CAREER DASHBOARD</div>
+        <h1>Welcome back, <span id="dash-greet-name">Student</span>! 👋</h1>
+        <p>Your AI-powered career toolkit. ATS check is <strong style="color:#6ee7b7;">completely free</strong> — click the card and test your resume instantly.</p>
+        <div class="dash-stat-row" style="margin-top:18px;">
+          <div class="dash-stat-pill"><div class="num" id="d-resume-count">0</div><div class="lbl">Resumes Built</div></div>
+          <div class="dash-stat-pill"><div class="num" id="d-ats-count">0</div><div class="lbl">ATS Checks Done</div></div>
+          <div class="dash-stat-pill"><div class="num" id="d-score-pct">0%</div><div class="lbl">Resume Strength</div></div>
+        </div>
+      </div>
+      <div class="dash-ats-free-badge">
+        <div class="big">📊</div>
+        <div style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;color:#fff;margin-top:4px;">ATS Check</div>
+        <div class="sub">Instant resume scoring</div>
+        <div class="tag">100% FREE</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-body">
+
+    <!-- Tip banner -->
+    <div class="dash-tip" id="dash-tip">
+      <div class="dash-tip-icon">💡</div>
+      <div class="dash-tip-text">
+        <div class="head">Start with the ATS Check — it's free!</div>
+        <div class="body">Upload your resume or paste text, add a job description, and see your score in seconds. No payment needed. If your score is low, unlock full tools for just ₹100.</div>
+      </div>
+      <button onclick="document.getElementById('dash-tip').style.display='none'" style="background:none;border:none;cursor:pointer;color:#4f46e5;font-size:18px;padding:0 0 0 8px;flex-shrink:0;">×</button>
+    </div>
+
+    <!-- Section: Free Tool -->
+    <div class="dash-section-label">⚡ Free for Everyone</div>
+    <div class="dash-grid" style="grid-template-columns:1fr 1fr;margin-bottom:28px;" id="free-cards-row">
+
+      <!-- ── ATS CHECK CARD (FREE, FULLY EXPANDABLE) ── -->
+      <div class="dcard free-card" id="ats-dcard">
+        <div class="dcard-header">
+          <div class="dcard-icon" style="background:#ecfdf5;">📊</div>
+          <div class="dcard-badges">
+            <span class="dcard-free-tag">FREE</span>
+            <span style="font-size:10px;color:#10b981;font-weight:600;">No login required</span>
+          </div>
+        </div>
+        <div class="dcard-body">
+          <div class="dcard-title">ATS Score Checker</div>
+          <div class="dcard-desc">Paste a job description + your resume details. Get instant score, missing keywords & what to fix. Completely free, always.</div>
+          <div class="dcard-progress-row" style="margin-bottom:12px;">
+            <div style="display:flex;gap:4px;">
+              <span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;"></span>
+              <span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;"></span>
+              <span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;"></span>
+            </div>
+            <span style="font-size:11px;color:#10b981;font-weight:600;margin-left:6px;">Instant · AI-powered · Free</span>
+          </div>
+          <button class="dcard-action" onclick="toggleAtsCard()" id="ats-card-toggle-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            Check My ATS Score
+          </button>
+        </div>
+        <!-- EXPANDED ATS PANEL -->
+        <div class="dcard-expand" id="ats-card-expand">
+          <div style="font-size:12px;font-weight:700;color:#059669;margin-bottom:14px;display:flex;align-items:center;gap:6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            ATS Check is 100% free — no payment needed
+          </div>
+          <!-- Tabs: paste text vs use filled form -->
+          <div class="ats-card-tabs">
+            <button class="ats-card-tab active" id="ats-tab-paste" onclick="switchAtsTab('paste')">📋 Paste Resume Text</button>
+            <button class="ats-card-tab" id="ats-tab-form" onclick="switchAtsTab('form')">📝 Use My Form Data</button>
+          </div>
+          <!-- Tab: paste -->
+          <div id="ats-paste-panel">
+            <div class="ats-upload-zone" id="ats-card-drop" onclick="document.getElementById('ats-card-file').click()" ondragover="event.preventDefault();this.classList.add('over')" ondrop="atsCardDrop(event)">
+              <input type="file" id="ats-card-file" accept=".txt,.pdf" style="display:none" onchange="atsCardFileInput(event)"/>
+              <div class="ats-upload-icon">📄</div>
+              <div class="ats-upload-txt" id="ats-drop-txt">Click to upload or drag resume</div>
+              <div class="ats-upload-sub">.txt files · or type below</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin:10px 0;font-size:11px;color:#94a3b8;"><div style="flex:1;height:1px;background:#e8e6ff;"></div>or paste<div style="flex:1;height:1px;background:#e8e6ff;"></div></div>
+            <textarea class="ats-jd-input" id="ats-card-resume-text" placeholder="Paste your full resume text here...&#10;&#10;(Name, skills, experience, projects...)"></textarea>
+          </div>
+          <!-- Tab: form (hidden by default) -->
+          <div id="ats-form-panel" style="display:none;">
+            <div style="background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:9px;padding:12px;margin-bottom:10px;font-size:12.5px;color:#065f46;">
+              <strong>✓ Using your resume data</strong> from the form you filled. You can edit any field in Step 2–5 and come back here.
+              <div id="ats-form-preview" style="margin-top:8px;font-size:11.5px;color:#047857;"></div>
+            </div>
+          </div>
+          <!-- JD input always shown -->
+          <div style="font-size:12px;font-weight:600;color:#059669;margin-bottom:6px;margin-top:2px;">Paste Job Description (required)</div>
+          <textarea class="ats-jd-input" id="ats-card-jd" placeholder="Paste job description here...&#10;&#10;Example: We are looking for a Python Developer with experience in Django, REST APIs, MySQL..."></textarea>
+          <div style="display:flex;gap:8px;">
+            <button class="ats-run-btn" onclick="runCardATS(false)" id="ats-run-quick">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              Quick ATS Score
+            </button>
+            <button class="ats-run-btn" style="flex:0.6;background:rgba(16,185,129,.15);color:#059669;border:1.5px solid #6ee7b7;" onclick="runCardATS(true)" id="ats-run-full">Full Report</button>
+          </div>
+          <!-- Result -->
+          <div class="ats-mini-result" id="ats-card-result" style="display:none;">
+            <div class="ats-score-row">
+              <div class="ats-score-ring empty" id="ats-card-ring">—</div>
+              <div class="ats-score-info">
+                <div class="title" id="ats-card-title">Checking...</div>
+                <div class="sub" id="ats-card-sub">Please wait</div>
+              </div>
+            </div>
+            <div class="ats-mini-feedback" id="ats-card-feedback"></div>
+          </div>
+          <!-- Upsell CTA (shown after low/mid score) -->
+          <div class="ats-free-cta" id="ats-card-upsell" style="display:none;">
+            <div class="head">🚀 Want a better ATS score?</div>
+            <div class="sub">Unlock AI resume rewriting, LinkedIn optimizer, interview prep & more for just ₹100 one-time.</div>
+            <button class="buy-btn" onclick="openPayModal()">Unlock Full Access — ₹100 →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resume Strength card -->
+      <div class="dcard" id="strength-dcard" onclick="goToBuildResume()">
+        <div class="dcard-header">
+          <div class="dcard-icon" style="background:#ede9fe;">🏗️</div>
+          <div class="dcard-badges">
+            <span class="dcard-free-tag">FREE TO START</span>
+          </div>
+        </div>
+        <div class="dcard-body">
+          <div class="dcard-title">Resume Strength</div>
+          <div class="dcard-desc">See how complete your resume is. Fill missing sections to boost your score and ATS performance.</div>
+          <div class="dcard-progress-row" style="margin-bottom:14px;">
+            <div class="dcard-prog-bar"><div class="dcard-prog-fill" id="dash-prog-fill" style="width:0%;"></div></div>
+            <div class="dcard-prog-pct" id="dash-prog-pct">0%</div>
+          </div>
+          <div class="ds-checks" id="dash-checks">
+            <div class="ds-check"><div class="ck2" id="dc0"></div>Name & Contact</div>
+            <div class="ds-check"><div class="ck2" id="dc1"></div>Education</div>
+            <div class="ds-check"><div class="ck2" id="dc2"></div>Technical Skills</div>
+            <div class="ds-check"><div class="ck2" id="dc3"></div>Experience / Projects</div>
+            <div class="ds-check"><div class="ck2" id="dc4"></div>Career Objective</div>
+          </div>
+          <button class="dcard-action" style="margin-top:14px;" onclick="event.stopPropagation();goToBuildResume()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Build / Edit Resume
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Premium tools -->
+    <div class="dash-section-label" id="premium-section-label">🔐 Premium Tools — ₹100 Lifetime</div>
+    <div class="dash-grid" id="premium-cards">
+
+      <!-- AI Resume Builder -->
+      <div class="dcard" id="builder-dcard" onclick="IS_PAID?goToBuildResume():openPayModal()">
+        <div class="dcard-header">
+          <div class="dcard-icon" style="background:#ede9fe;">🤖</div>
+          <div class="dcard-badges">
+            <span class="dcard-premium-tag" id="builder-tag">PREMIUM</span>
+          </div>
+        </div>
+        <div class="dcard-body">
+          <div class="dcard-title">AI Resume Builder</div>
+          <div class="dcard-desc">Type your raw experience in plain English. AI rewrites every section with strong action verbs, numbers and ATS keywords.</div>
+          <button class="dcard-action locked-btn" id="builder-btn" onclick="event.stopPropagation();IS_PAID?goToBuildResume():openPayModal()">
+            🔒 Unlock to Build
+          </button>
+        </div>
+      </div>
+
+      <!-- Job Matcher -->
+      <div class="dcard" id="jobs-dcard" onclick="IS_PAID?goToStep(5):openPayModal()">
+        <div class="dcard-header">
+          <div class="dcard-icon" style="background:rgba(59,130,246,.1);">🎯</div>
+          <div class="dcard-badges">
+            <span class="dcard-premium-tag" id="jobs-tag">PREMIUM</span>
+          </div>
+        </div>
+        <div class="dcard-body">
+          <div class="dcard-title">Smart Job Matcher</div>
+          <div class="dcard-desc">AI scans your skills and recommends 6 specific roles with salary ranges and which platform to apply on. India-market specific.</div>
+          <button class="dcard-action locked-btn" id="jobs-btn" onclick="event.stopPropagation();IS_PAID?goToStep(5):openPayModal()">
+            🔒 Unlock Job Matches
+          </button>
+        </div>
+      </div>
+
+      <!-- LinkedIn Optimizer -->
+      <div class="dcard" id="li-dcard" onclick="IS_PAID?goToStep(6):openPayModal()">
+        <div class="dcard-header">
+          <div class="dcard-icon" style="background:rgba(59,130,246,.08);">💼</div>
+          <div class="dcard-badges">
+            <span class="dcard-premium-tag" id="li-tag">PREMIUM</span>
+          </div>
+        </div>
+        <div class="dcard-body">
+          <div class="dcard-title">LinkedIn Optimizer</div>
+          <div class="dcard-desc">AI writes your headline, About section, and tells you which skills to add for maximum recruiter visibility.</div>
+          <button class="dcard-action locked-btn" id="li-btn" onclick="event.stopPropagation();IS_PAID?goToStep(6):openPayModal()">
+            🔒 Unlock LinkedIn Tools
+          </button>
+        </div>
+      </div>
+
+      <!-- Mock Interview -->
+      <div class="dcard" id="iv-dcard" onclick="IS_PAID?goToStep(6):openPayModal()">
+        <div class="dcard-header">
+          <div class="dcard-icon" style="background:rgba(239,68,68,.08);">🎤</div>
+          <div class="dcard-badges">
+            <span class="dcard-premium-tag" id="iv-tag">PREMIUM</span>
+          </div>
+        </div>
+        <div class="dcard-body">
+          <div class="dcard-title">Mock Interview Prep</div>
+          <div class="dcard-desc">Get 10 likely interview questions based on your resume and JD — with tips on how to answer each one brilliantly.</div>
+          <button class="dcard-action locked-btn" id="iv-btn" onclick="event.stopPropagation();IS_PAID?goToStep(6):openPayModal()">
+            🔒 Unlock Interview Prep
+          </button>
+        </div>
+      </div>
+
+      <!-- Cover Letter -->
+      <div class="dcard" id="cover-dcard" onclick="IS_PAID?goToStep(5):openPayModal()">
+        <div class="dcard-header">
+          <div class="dcard-icon" style="background:rgba(16,185,129,.08);">✉️</div>
+          <div class="dcard-badges">
+            <span class="dcard-premium-tag" id="cover-tag">PREMIUM</span>
+          </div>
+        </div>
+        <div class="dcard-body">
+          <div class="dcard-title">AI Cover Letter</div>
+          <div class="dcard-desc">Generate a personalised, professional cover letter matched to any job description in 10 seconds. Download as Word.</div>
+          <button class="dcard-action locked-btn" id="cover-btn" onclick="event.stopPropagation();IS_PAID?goToStep(5):openPayModal()">
+            🔒 Unlock Cover Letter
+          </button>
+        </div>
+      </div>
+
+      <!-- Download -->
+      <div class="dcard" id="dl-dcard" onclick="IS_PAID?goToStep(7):openPayModal()">
+        <div class="dcard-header">
+          <div class="dcard-icon" style="background:rgba(245,158,11,.08);">⬇️</div>
+          <div class="dcard-badges">
+            <span class="dcard-premium-tag" id="dl-tag">PREMIUM</span>
+          </div>
+        </div>
+        <div class="dcard-body">
+          <div class="dcard-title">Download Resume</div>
+          <div class="dcard-desc">Export your resume as a professionally formatted PDF or Word document. Choose from 3 beautiful templates.</div>
+          <button class="dcard-action locked-btn" id="dl-btn" onclick="event.stopPropagation();IS_PAID?goToStep(7):openPayModal()">
+            🔒 Unlock Downloads
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unlock CTA bar -->
+    <div id="dash-unlock-cta" style="background:linear-gradient(135deg,#6366f1,#4f46e5);border-radius:16px;padding:28px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:40px;">
+      <div>
+        <div style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#fff;margin-bottom:6px;">🚀 Unlock Everything for ₹100</div>
+        <div style="font-size:13.5px;color:rgba(255,255,255,.8);">One-time payment. Lifetime access. AI resume builder, job matcher, LinkedIn tools, interview prep & more.</div>
+      </div>
+      <button onclick="openPayModal()" style="background:#fff;color:#4f46e5;border:none;border-radius:10px;padding:13px 28px;font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+        Get Full Access →
+      </button>
+    </div>
+
+  </div><!-- /dash-body -->
+</div>
+
+<!-- ═══════════════════════════════════════
+     APP
+═══════════════════════════════════════ -->
+<div class="app-layout" id="app">
+  <nav class="app-nav">
+    <div class="app-nav-inner">
+      <div class="app-logo" onclick="goToDashboard()">
+        <div class="app-logo-icon">R</div>
+        Resumiq<span>.</span>
+      </div>
+      <div class="app-nav-actions">
+        <button class="btn" onclick="goToDashboard()" style="font-size:12px;padding:7px 12px;color:var(--ink3);background:var(--surface2);border-color:var(--border);">← Dashboard</button>
+        <div class="save-indicator" id="save-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Saved
+        </div>
+        <button class="api-badge" id="api-btn" onclick="toggleApiPanel()">
+          <div class="api-badge-dot"></div>
+          <span id="api-btn-text">Add API Key</span>
+        </button>
+        <button class="btn btn-primary" onclick="openPayModal()" id="unlock-btn" style="font-size:12px;padding:7px 14px;">🔓 Unlock ₹100</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- API Panel (hidden by default) -->
+  <div id="api-panel-wrap" style="display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:12px 1.5rem;">
+    <div style="max-width:1200px;margin:0 auto;">
+      <div class="api-panel">
+        <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:8px;">🔑 Anthropic API Key</div>
+        <div style="font-size:12px;color:var(--ink3);margin-bottom:10px;">Get a free key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--primary);">console.anthropic.com</a>. Stored in your browser only — never sent to us.</div>
+        <div style="display:flex;gap:9px;">
+          <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." style="flex:1;font-family:monospace;font-size:12px;"/>
+          <button class="btn btn-primary" onclick="saveApiKey()" style="white-space:nowrap;">Save & Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-body">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-card">
+        <div class="sidebar-title">Your Progress</div>
+        <div class="step-list" id="step-list">
+          <div class="step-item active" onclick="goStep(0)" id="si-0"><div class="step-num" id="sn-0">1</div><div class="step-label">Personal Info</div></div>
+          <div class="step-item" onclick="goStep(1)" id="si-1"><div class="step-num" id="sn-1">2</div><div class="step-label">Education</div></div>
+          <div class="step-item" onclick="goStep(2)" id="si-2"><div class="step-num" id="sn-2">3</div><div class="step-label">Skills</div></div>
+          <div class="step-item" onclick="goStep(3)" id="si-3"><div class="step-num" id="sn-3">4</div><div class="step-label">Experience</div></div>
+          <div class="step-item" onclick="goStep(4)" id="si-4"><div class="step-num" id="sn-4">5</div><div class="step-label">Projects & More</div></div>
+          <div class="step-item" onclick="goStep(5)" id="si-5"><div class="step-num" id="sn-5">6</div><div class="step-label">ATS & Jobs</div></div>
+          <div class="step-item" onclick="goStep(6)" id="si-6"><div class="step-num" id="sn-6">7</div><div class="step-label">LinkedIn & Interview</div></div>
+          <div class="step-item" onclick="goStep(7)" id="si-7"><div class="step-num" id="sn-7">8</div><div class="step-label">Preview & Download</div></div>
+        </div>
+        <div class="sidebar-score">
+          <div class="score-label">Resume Strength</div>
+          <div class="score-bar-wrap"><div class="score-bar-fill" id="score-bar" style="width:0%;background:var(--primary);"></div></div>
+          <div class="score-pct-row"><span id="score-pct">0% complete</span><span id="score-emoji">📝</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEPS -->
+    <div class="main-content">
+
+      <!-- STEP 0: Personal Info -->
+      <div class="step-panel active" id="sp-0">
+        <div class="step-header">
+          <div class="step-chip">Step 1 of 8</div>
+          <h2 class="step-h2">Let's start with your details 👋</h2>
+          <p class="step-sub">Fill in your basic info. Don't worry about making it perfect — you can edit anything later.</p>
+        </div>
+
+        <!-- Import banner -->
+        <div style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1.5px solid rgba(16,185,129,.25);border-radius:var(--r);padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:26px;">📂</span>
+            <div><div style="font-size:13.5px;font-weight:700;color:var(--ink);">Already have a resume?</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Upload or paste it — AI fills all fields in seconds</div></div>
+          </div>
+          <button class="btn btn-green" onclick="openImport()" style="white-space:nowrap;">Import Resume →</button>
+        </div>
+
+        <div class="scard">
+          <div class="scard-head"><div class="scard-icon sc-indigo">👤</div><div><div class="scard-title">Personal Info</div><div class="scard-sub">Your name and contact details</div></div></div>
+          <div class="field-row">
+            <div class="field"><label>Full Name</label><input id="r-name" placeholder="Priya Sharma" oninput="autoSave()"/></div>
+            <div class="field"><label>Email Address</label><input id="r-email" type="email" placeholder="priya@gmail.com" oninput="autoSave()"/></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Phone Number</label><input id="r-phone" placeholder="+91 98765 43210" oninput="autoSave()"/></div>
+            <div class="field"><label>City / Location</label><input id="r-city" placeholder="Delhi, India" oninput="autoSave()"/></div>
+          </div>
+          <div class="field"><label>LinkedIn or Portfolio URL <span class="opt">(optional)</span></label><input id="r-linkedin" placeholder="linkedin.com/in/priyasharma" oninput="autoSave()"/></div>
+        </div>
+        <div class="step-nav">
+          <div></div>
+          <button class="btn-lg btn-lg-primary" onclick="nextStep()">Education →</button>
+        </div>
+      </div>
+
+      <!-- STEP 1: Education -->
+      <div class="step-panel" id="sp-1">
+        <div class="step-header">
+          <div class="step-chip">Step 2 of 8</div>
+          <h2 class="step-h2">Tell us about your education 🎓</h2>
+          <p class="step-sub">Your degree and college details. This helps AI tailor your resume for the right job level.</p>
+        </div>
+        <div class="scard">
+          <div class="scard-head"><div class="scard-icon sc-green">🎓</div><div><div class="scard-title">Education Details</div><div class="scard-sub">Your most recent or current degree</div></div></div>
+          <div class="field-row">
+            <div class="field"><label>Degree</label><input id="r-degree" placeholder="B.Tech Computer Science" oninput="autoSave()"/></div>
+            <div class="field"><label>College / University</label><input id="r-college" placeholder="Delhi University" oninput="autoSave()"/></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Year of Passing</label><input id="r-year" placeholder="2025" oninput="autoSave()"/></div>
+            <div class="field"><label>CGPA or Percentage</label><input id="r-cgpa" placeholder="8.5 / 10   or   85%" oninput="autoSave()"/></div>
+          </div>
+        </div>
+        <div class="step-nav">
+          <button class="btn-lg btn-lg-back" onclick="prevStep()">← Back</button>
+          <button class="btn-lg btn-lg-primary" onclick="nextStep()">Skills →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Skills -->
+      <div class="step-panel" id="sp-2">
+        <div class="step-header">
+          <div class="step-chip">Step 3 of 8</div>
+          <h2 class="step-h2">What are your skills? ⚡</h2>
+          <p class="step-sub">List your technical and soft skills. Separate each with a comma. More skills = higher ATS score.</p>
+        </div>
+        <div class="scard">
+          <div class="scard-head"><div class="scard-icon sc-amber">⚡</div><div><div class="scard-title">Technical Skills</div><div class="scard-sub">Programming, tools, frameworks, platforms</div></div></div>
+          <div class="field"><label>Technical Skills <span style="font-size:11px;color:var(--ink4);">(comma separated)</span></label><input id="r-skills" placeholder="Python, React, SQL, Machine Learning, Git, AWS, Figma..." oninput="autoSave()"/></div>
+        </div>
+        <div class="scard">
+          <div class="scard-head"><div class="scard-icon sc-green">🤝</div><div><div class="scard-title">Soft Skills <span class="opt">(optional)</span></div><div class="scard-sub">Leadership, communication, teamwork</div></div></div>
+          <div class="field"><label>Soft Skills</label><input id="r-soft" placeholder="Leadership, Communication, Problem Solving, Teamwork..." oninput="autoSave()"/></div>
+        </div>
+        <div class="step-nav">
+          <button class="btn-lg btn-lg-back" onclick="prevStep()">← Back</button>
+          <button class="btn-lg btn-lg-primary" onclick="nextStep()">Experience →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Experience -->
+      <div class="step-panel" id="sp-3">
+        <div class="step-header">
+          <div class="step-chip">Step 4 of 8</div>
+          <h2 class="step-h2">Work experience & internships 💼</h2>
+          <p class="step-sub">Write what you did in your own words — AI will rewrite it with strong action verbs and measurable results.</p>
+        </div>
+        <div class="scard">
+          <div class="scard-head"><div class="scard-icon sc-indigo">💼</div><div><div class="scard-title">Experience / Internships</div><div class="scard-sub">Fresher? Write any part-time work, volunteer work, or freelance projects</div></div></div>
+          <div class="field">
+            <label>Describe your experience in your own words</label>
+            <textarea id="r-experience" style="min-height:120px;" placeholder="Example:
+Intern at Infosys (Jun–Aug 2024): I worked on building REST APIs using Python Flask. I also fixed some bugs and the page load time became faster. Worked with a team of 6 people." oninput="autoSave()"></textarea>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-ai" onclick="aiEnhance('experience')">✦ AI Rewrite with Action Verbs</button>
+          </div>
+          <div class="ai-box" id="ai-experience"></div>
+        </div>
+        <div class="step-nav">
+          <button class="btn-lg btn-lg-back" onclick="prevStep()">← Back</button>
+          <button class="btn-lg btn-lg-primary" onclick="nextStep()">Projects →</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: Projects & More -->
+      <div class="step-panel" id="sp-4">
+        <div class="step-header">
+          <div class="step-chip">Step 5 of 8</div>
+          <h2 class="step-h2">Projects, achievements & goal 🚀</h2>
+          <p class="step-sub">Your projects are often the most important part for freshers. Describe them simply — AI will make them shine.</p>
+        </div>
+        <div class="scard">
+          <div class="scard-head"><div class="scard-icon sc-green">🚀</div><div><div class="scard-title">Projects</div><div class="scard-sub">Add at least 2 projects</div></div></div>
+          <div class="field">
+            <textarea id="r-projects" style="min-height:110px;" placeholder="Example:
+1. E-Commerce Website — Built using React and Node.js. Around 500 people used it. Hosted on AWS.
+2. Chatbot — Made a chatbot using Python that answers questions about our college." oninput="autoSave()"></textarea>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-ai" onclick="aiEnhance('projects')">✦ AI Rewrite Projects</button>
+          </div>
+          <div class="ai-box" id="ai-projects"></div>
+        </div>
+        <div class="scard">
+          <div class="scard-head"><div class="scard-icon sc-amber">🏆</div><div><div class="scard-title">Certifications & Achievements <span class="opt">(optional)</span></div></div></div>
+          <textarea id="r-achievements" style="min-height:70px;" placeholder="AWS Cloud Practitioner (2024), 1st place Smart India Hackathon 2023, Google Data Analytics Certificate..." oninput="autoSave()"></textarea>
+        </div>
+        <div class="scard">
+          <div class="scard-head"><div class="scard-icon sc-red">🎯</div><div><div class="scard-title">Career Objective</div><div class="scard-sub">What job are you targeting?</div></div></div>
+          <div class="field"><label>Target Role</label><input id="r-target" placeholder="Software Engineer / Data Analyst / Marketing Manager..." oninput="autoSave()"/></div>
+          <div class="btn-row">
+            <button class="btn btn-ai" onclick="aiObjective()">✦ AI Write My Objective</button>
+          </div>
+          <div class="ai-box" id="ai-objective"></div>
+        </div>
+        <div class="step-nav">
+          <button class="btn-lg btn-lg-back" onclick="prevStep()">← Back</button>
+          <button class="btn-lg btn-lg-primary" onclick="nextStep()">ATS & Jobs →</button>
+        </div>
+      </div>
+
+      <!-- STEP 5: ATS & Jobs -->
+      <div class="step-panel" id="sp-5">
+        <div class="step-header">
+          <div class="step-chip">Step 6 of 8</div>
+          <h2 class="step-h2">Check your ATS score & find jobs 📊</h2>
+          <p class="step-sub">Paste a job description to see how well your resume matches. Then find the best roles for your profile.</p>
+        </div>
+        <div class="scard">
+          <div class="scard-head"><div class="scard-icon sc-indigo">📋</div><div><div class="scard-title">Paste a Job Description</div><div class="scard-sub">Copy from Naukri, LinkedIn, or any company website</div></div></div>
+          <textarea id="jd-input" style="min-height:140px;" placeholder="Paste job description here...
+
+Example: We are looking for a Python Developer with experience in Django, REST APIs, MySQL..."></textarea>
+          <div class="btn-row" style="margin-top:12px;">
+            <button class="btn btn-ai" onclick="runATS(false)">✦ Check My ATS Score</button>
+            <button class="btn" onclick="runATS(true)">Full Detailed Report</button>
+          </div>
+        </div>
+        <!-- ATS Result -->
+        <div class="scard" id="ats-result">
+          <div class="scard-head"><div class="scard-icon sc-green">📊</div><div><div class="scard-title">Your ATS Result</div></div></div>
+          <div class="ats-wrap">
+            <div class="ats-circle empty" id="ats-ring">—</div>
+            <div class="ats-info"><div class="ats-status" id="ats-title">Run the check first</div><div class="ats-hint" id="ats-sub">Paste a JD above and click "Check My ATS Score"</div></div>
+          </div>
+          <div class="prog"><div class="prog-fill" id="ats-bar" style="width:0%;background:var(--green);"></div></div>
+          <div class="ai-box" id="ai-ats"></div>
+        </div>
+        <!-- Jobs -->
+        <div class="scard">
+          <div class="scard-head"><div class="scard-icon sc-amber">💼</div><div><div class="scard-title">Find Jobs For You</div><div class="scard-sub">AI recommends roles based on your skills</div></div></div>
+          <div class="field-row">
+            <div class="field"><label>Preferred Location</label><input id="j-loc" placeholder="Delhi, Bangalore, Remote..."/></div>
+            <div class="field"><label>Experience Level</label>
+              <select id="j-exp"><option>Fresher (0 years)</option><option>Junior (1–2 years)</option><option>Mid-level (3–5 years)</option></select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Expected Salary</label>
+              <select id="j-salary"><option>0–3 LPA (Fresher)</option><option>3–6 LPA</option><option>6–10 LPA</option><option>10–15 LPA</option><option>15+ LPA</option></select>
+            </div>
+            <div class="field"><label>Job Type</label>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
+                <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="jt-ft" checked style="width:auto;accent-color:var(--primary);"> Full-time</label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="jt-in" style="width:auto;accent-color:var(--primary);"> Internship</label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="jt-rm" style="width:auto;accent-color:var(--primary);"> Remote</label>
+              </div>
+            </div>
+          </div>
+          <div class="btn-row"><button class="btn btn-ai" onclick="findJobs()">✦ Find My Best Job Matches</button></div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;" id="jobs-static">
+            <div class="job-card"><div class="job-co">Largest portal in India</div><div class="job-title">Naukri.com</div><div><span class="tag tag-g">Free</span> <span class="tag tag-p">10M+ jobs</span></div></div>
+            <div class="job-card"><div class="job-co">Best for freshers</div><div class="job-title">Internshala</div><div><span class="tag tag-g">Free</span> <span class="tag tag-p">Verified</span></div></div>
+            <div class="job-card"><div class="job-co">Global networking</div><div class="job-title">LinkedIn Jobs</div><div><span class="tag tag-g">Free</span> <span class="tag tag-a">Referrals</span></div></div>
+          </div>
+          <div class="ai-box" id="ai-jobs"></div>
+          <div class="ai-box" id="ai-platforms" style="margin-top:8px;"></div>
+        </div>
+        <div class="step-nav">
+          <button class="btn-lg btn-lg-back" onclick="prevStep()">← Back</button>
+          <button class="btn-lg btn-lg-primary" onclick="nextStep()">LinkedIn & Interview →</button>
+        </div>
+      </div>
+
+      <!-- STEP 6: LinkedIn & Interview -->
+      <div class="step-panel" id="sp-6">
+        <div class="step-header">
+          <div class="step-chip">Step 7 of 8</div>
+          <h2 class="step-h2">LinkedIn & Interview Prep 🎤</h2>
+          <p class="step-sub">Get your LinkedIn profile optimized and practice with likely interview questions before the big day.</p>
+        </div>
+        <div class="scard">
+          <div class="scard-head"><div class="scard-icon sc-blue">💼</div><div><div class="scard-title">LinkedIn Profile Optimizer</div><div class="scard-sub">AI writes your headline, About section, and skill suggestions</div></div></div>
+          <div class="field-row">
+            <div class="field"><label>Target Industry / Role</label><input id="li-target" placeholder="Software Engineering, Data Science..."/></div>
+            <div class="field"><label>Target Companies <span class="opt">(optional)</span></label><input id="li-companies" placeholder="Google, Flipkart, startups..."/></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-blue" onclick="optimizeLinkedIn('headline')">Headline (3 options)</button>
+            <button class="btn btn-blue" onclick="optimizeLinkedIn('about')">About Section</button>
+            <button class="btn btn-blue" onclick="optimizeLinkedIn('skills')">Skills to Add</button>
+          </div>
+          <div class="ai-box" id="ai-li-headline"></div>
+          <div class="ai-box" id="ai-li-about"></div>
+          <div class="ai-box" id="ai-li-skills"></div>
+        </div>
+        <div class="scard">
+          <div class="scard-head"><div class="scard-icon sc-indigo">🎤</div><div><div class="scard-title">Mock Interview Questions</div><div class="scard-sub">AI predicts what your interviewer will actually ask</div></div></div>
+          <div class="field-row">
+            <div class="field"><label>Target Role / Company</label><input id="iv-role" placeholder="Software Engineer at Infosys..."/></div>
+            <div class="field"><label>Interview Type</label>
+              <select id="iv-type"><option>Technical Interview</option><option>HR / Behavioral</option><option>Both Technical + HR</option><option>Campus Placement</option></select>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-ai" onclick="genInterviewQs()">✦ Generate Questions + Tips</button>
+            <button class="btn" onclick="genInterviewTips()">General Interview Tips</button>
+          </div>
+          <div class="ai-box" id="ai-interview-qs"></div>
+          <div class="ai-box" id="ai-interview-tips"></div>
+        </div>
+        <div class="step-nav">
+          <button class="btn-lg btn-lg-back" onclick="prevStep()">← Back</button>
+          <button class="btn-lg btn-lg-primary" onclick="nextStep()">Preview & Download →</button>
+        </div>
+      </div>
+
+      <!-- STEP 7: Preview & Download -->
+      <div class="step-panel" id="sp-7">
+        <div class="step-header">
+          <div class="step-chip">Step 8 of 8 — Final Step 🎉</div>
+          <h2 class="step-h2">Your resume is ready!</h2>
+          <p class="step-sub">Choose a template, preview your resume, and download in Word or PDF format.</p>
+        </div>
+
+        <div class="scard">
+          <div class="scard-head"><div class="scard-icon sc-indigo">🎨</div><div><div class="scard-title">Choose a Template</div></div></div>
+          <div class="tpl-row">
+            <div class="tpl-card sel" id="tpl-modern" onclick="selectTemplate('modern')">
+              <div class="tpl-thumb tpl-t1"><div class="tl thick"></div><div class="tl thin"></div><div class="tl short"></div><div class="tl thin"></div></div>
+              <div class="tpl-name">Modern <span class="tpl-sel-badge">✓ Selected</span></div>
+            </div>
+            <div class="tpl-card" id="tpl-classic" onclick="selectTemplate('classic')">
+              <div class="tpl-thumb tpl-t2"><div class="tl2 thick"></div><div class="tl2 thin"></div><div class="tl2 accent"></div><div class="tl2 thin"></div></div>
+              <div class="tpl-name">Classic <span class="tpl-sel-badge">✓ Selected</span></div>
+            </div>
+            <div class="tpl-card" id="tpl-minimal" onclick="selectTemplate('minimal')">
+              <div class="tpl-thumb tpl-t3" style="flex-direction:row;gap:8px;align-items:stretch;">
+                <div style="width:5px;background:#f97316;border-radius:3px;flex-shrink:0;"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:5px;"><div class="tl2 thick"></div><div class="tl2 thin"></div><div class="tl2 short" style="background:#f97316;"></div></div>
+              </div>
+              <div class="tpl-name">Minimal <span class="tpl-sel-badge">✓ Selected</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="scard">
+          <div class="scard-head"><div class="scard-icon sc-green">✅</div><div><div class="scard-title">Resume Checklist</div></div></div>
+          <ul class="cklist" id="checklist">
+            <li><div class="ck empty" id="chk0">✓</div><span>Personal info (name, email, phone)</span></li>
+            <li><div class="ck empty" id="chk1">✓</div><span>Education details</span></li>
+            <li><div class="ck empty" id="chk2">✓</div><span>Technical & soft skills</span></li>
+            <li><div class="ck empty" id="chk3">✓</div><span>Experience / internships</span></li>
+            <li><div class="ck empty" id="chk4">✓</div><span>Projects (at least 2)</span></li>
+            <li><div class="ck empty" id="chk5">✓</div><span>Career objective</span></li>
+          </ul>
+          <div class="btn-row" style="margin-top:14px;">
+            <button class="btn btn-green" onclick="genPreview()">↺ Refresh Preview</button>
+            <button class="btn btn-ai" onclick="aiCoverLetter()">✦ Write Cover Letter</button>
+          </div>
+          <div class="ai-box" id="ai-cover"></div>
+          <div id="cover-dl" style="display:none;margin-top:8px;">
+            <button class="btn" onclick="downloadCoverLetter()" style="font-size:12px;">⬇ Download Cover Letter</button>
+          </div>
+        </div>
+
+        <div class="preview-wrap">
+          <div class="preview-toolbar">
+            <div class="preview-toolbar-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Resume Preview
+            </div>
+            <div class="dl-btns">
+              <button class="btn btn-word" onclick="downloadWord()" style="font-size:12px;padding:8px 14px;">⬇ Word</button>
+              <button class="btn btn-green" onclick="downloadPDF()" style="font-size:12px;padding:8px 14px;">⬇ PDF</button>
+              <button class="btn btn-wa" onclick="shareWhatsApp()" style="font-size:12px;padding:8px 14px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                Share
+              </button>
+            </div>
+          </div>
+          <div class="preview-inner" id="resume-preview-box">
+            <div style="text-align:center;padding:40px;color:var(--ink4);">
+              <div style="font-size:40px;margin-bottom:12px;">📄</div>
+              <div style="font-size:14px;font-weight:600;color:var(--ink2);margin-bottom:6px;">No preview yet</div>
+              <div style="font-size:13px;">Fill your details in the earlier steps, then click "Refresh Preview" above</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-nav">
+          <button class="btn-lg btn-lg-back" onclick="prevStep()">← Back</button>
+          <button class="btn-wa btn-lg" onclick="shareWhatsApp()" style="font-size:14px;border-radius:var(--r-sm);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            Share with Friends
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /main-content -->
+  </div><!-- /app-body -->
+</div><!-- /app -->
+
+<!-- IMPORT MODAL -->
+<div class="overlay" id="import-modal">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-h">📂 Import Your Resume</div><button class="modal-x" onclick="closeImport()">✕</button></div>
+    <p style="font-size:13px;color:var(--ink3);margin-bottom:16px;">Upload a .txt file or paste your resume text. AI will read it and fill all the fields for you automatically.</p>
+    <div class="import-zone" id="import-drop" onclick="document.getElementById('file-input').click()" ondragover="handleDragOver(event)" ondrop="handleFileDrop(event)">
+      <input type="file" id="file-input" accept=".txt" style="display:none;" onchange="handleFileInput(event)"/>
+      <div class="import-zone-icon">📄</div>
+      <div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:4px;">Click to upload or drag & drop</div>
+      <div style="font-size:12px;color:var(--ink4);">.txt files only</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin:14px 0;font-size:12px;color:var(--ink4);">
+      <div style="flex:1;height:1px;background:var(--border);"></div>or paste text<div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>
+    <div class="field"><label>Paste your resume here</label><textarea id="import-text" style="min-height:140px;" placeholder="Paste your full resume text here..."></textarea></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="aiParseResume()" id="parse-btn">✦ AI Fill All Fields</button>
+      <button class="btn" onclick="closeImport()">Cancel</button>
+    </div>
+    <div class="ai-box" id="ai-parse-status" style="margin-top:12px;"></div>
+  </div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div class="overlay" id="pay-modal">
+  <div class="modal" style="max-width:420px;text-align:center;">
+    <div style="font-size:44px;margin-bottom:10px;">🔓</div>
+    <div style="font-family:var(--font-head);font-size:20px;font-weight:800;color:var(--ink);margin-bottom:6px;">Unlock Full Access</div>
+    <p style="font-size:13px;color:var(--ink3);margin-bottom:20px;">One-time ₹100. Lifetime access. Everything unlocked immediately.</p>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:18px;">
+      <div style="font-family:var(--font-head);font-size:42px;font-weight:800;color:var(--ink);">₹100</div>
+      <div style="font-size:12px;color:var(--ink4);">one-time · no subscription</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:14px;text-align:left;">
+        <div style="font-size:12px;color:var(--ink2);display:flex;gap:6px;align-items:center;"><span style="color:var(--green);font-weight:700;">✓</span>Unlimited resumes</div>
+        <div style="font-size:12px;color:var(--ink2);display:flex;gap:6px;align-items:center;"><span style="color:var(--green);font-weight:700;">✓</span>Import old resume</div>
+        <div style="font-size:12px;color:var(--ink2);display:flex;gap:6px;align-items:center;"><span style="color:var(--green);font-weight:700;">✓</span>LinkedIn optimizer</div>
+        <div style="font-size:12px;color:var(--ink2);display:flex;gap:6px;align-items:center;"><span style="color:var(--green);font-weight:700;">✓</span>Mock interview prep</div>
+        <div style="font-size:12px;color:var(--ink2);display:flex;gap:6px;align-items:center;"><span style="color:var(--green);font-weight:700;">✓</span>All 3 templates</div>
+        <div style="font-size:12px;color:var(--ink2);display:flex;gap:6px;align-items:center;"><span style="color:var(--green);font-weight:700;">✓</span>Word + PDF download</div>
+      </div>
+    </div>
+    <button class="btn-lg btn-lg-primary" style="width:100%;background:linear-gradient(135deg,#6366f1,#4f46e5);border:none;border-radius:var(--r-sm);" onclick="startPayment()">Pay ₹100 via Razorpay →</button>
+    <div style="font-size:11px;color:var(--ink4);margin-top:8px;">Secured by Razorpay · UPI / Cards / Net Banking</div>
+    <button class="btn" style="width:100%;margin-top:10px;justify-content:center;" onclick="closePayModal()">Maybe later</button>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────
+const RAZORPAY_KEY = 'rzp_test_REPLACE_YOUR_KEY_HERE';
+
+// ── STATE ─────────────────────────────────────────
+let API_KEY = '';
+const PROXY_URL = 'https://resumiq-proxy.mahendraa1188.workers.dev';
+let IS_PAID = false;
+let CUR_STEP = 0;
+let TPL = 'modern';
+const TOTAL_STEPS = 8;
+
+// ── INIT ──────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  loadSaved();
+  checkPaid();
+  updateScore();
+  genPreview();
+  // Init ATS card expand as hidden
+  const atsExp = document.getElementById('ats-card-expand');
+  if (atsExp) atsExp.style.display = 'none';
+});
+
+// ── PAGE TOGGLE ───────────────────────────────────
+function enterApp() {
+  _trackEnterApp();
+  // Go to dashboard first, not directly to form
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('app').classList.remove('show');
+  showDashboard();
+}
+function showLanding() {
+  document.getElementById('landing').style.display = 'block';
+  document.getElementById('dashboard').classList.remove('show');
+  document.getElementById('app').classList.remove('show');
+}
+function showDashboard() {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('app').classList.remove('show');
+  document.getElementById('dashboard').classList.add('show');
+  refreshDashboard();
+}
+function goToDashboard() {
+  document.getElementById('app').classList.remove('show');
+  document.getElementById('dashboard').classList.add('show');
+  refreshDashboard();
+}
+function goToBuildResume() {
+  document.getElementById('dashboard').classList.remove('show');
+  document.getElementById('app').classList.add('show');
+  goStep(0);
+}
+function goToStep(n) {
+  document.getElementById('dashboard').classList.remove('show');
+  document.getElementById('app').classList.add('show');
+  goStep(n);
+}
+function landAnchor(id) {
+  document.querySelector(id)?.scrollIntoView({behavior:'smooth'});
+}
+
+// ── DASHBOARD LOGIC ─────────────────────────────
+function refreshDashboard() {
+  const r = getResume();
+  // Greet name
+  const name = r.name ? r.name.split(' ')[0] : 'Student';
+  document.getElementById('dash-greet-name').textContent = name;
+  document.getElementById('dash-user-name').textContent = name;
+  document.getElementById('dash-avatar').textContent = name.charAt(0).toUpperCase();
+
+  // Stats
+  const adminData = getAdminData ? getAdminData() : {atsChecks:0};
+  const student = adminData.students?.find(s => s.email === r.email) || {};
+  document.getElementById('d-resume-count').textContent = student.resumeCount || 0;
+  document.getElementById('d-ats-count').textContent = student.atsCount || adminData.atsChecks || 0;
+
+  // Resume strength
+  const checks = [r.name||r.email, r.degree, r.skills, r.experience||r.projects, r.target];
+  const done = checks.filter(Boolean).length;
+  const pct = Math.round(done / checks.length * 100);
+  document.getElementById('dash-prog-fill').style.width = pct + '%';
+  document.getElementById('dash-prog-pct').textContent = pct + '%';
+  document.getElementById('d-score-pct').textContent = pct + '%';
+  const ckIds = ['dc0','dc1','dc2','dc3','dc4'];
+  checks.forEach((c,i) => {
+    const el = document.getElementById(ckIds[i]);
+    if (el) { el.className = c ? 'ck2 done' : 'ck2'; el.textContent = c ? '✓' : ''; }
+  });
+
+  // Form data preview for ATS
+  const preview = [r.name?'Name: '+r.name:'', r.skills?'Skills: '+r.skills.substring(0,60)+'...':'', r.degree?r.degree:''].filter(Boolean).join(' · ');
+  const prevEl = document.getElementById('ats-form-preview');
+  if (prevEl) prevEl.textContent = preview || 'Fill the resume form first to use this option.';
+
+  // Premium state
+  updatePremiumCards();
+}
+
+function updatePremiumCards() {
+  const paid = IS_PAID;
+  const tools = [
+    {id:'builder', action: goToBuildResume, label:'🤖 Build My Resume'},
+    {id:'jobs', action: ()=>goToStep(5), label:'🎯 Find Job Matches'},
+    {id:'li', action: ()=>goToStep(6), label:'💼 Optimize LinkedIn'},
+    {id:'iv', action: ()=>goToStep(6), label:'🎤 Start Interview Prep'},
+    {id:'cover', action: ()=>goToStep(5), label:'✉️ Generate Cover Letter'},
+    {id:'dl', action: ()=>goToStep(7), label:'⬇️ Download Resume'},
+  ];
+  tools.forEach(t => {
+    const card = document.getElementById(t.id+'-dcard');
+    const btn = document.getElementById(t.id+'-btn');
+    const tag = document.getElementById(t.id+'-tag');
+    if (!card||!btn||!tag) return;
+    if (paid) {
+      card.classList.remove('locked');
+      btn.className = 'dcard-action';
+      btn.textContent = t.label;
+      tag.className = 'dcard-free-tag';
+      tag.textContent = 'UNLOCKED ✓';
+      card.onclick = () => t.action();
+    }
+  });
+  if (paid) {
+    const cta = document.getElementById('dash-unlock-cta');
+    if (cta) cta.style.display = 'none';
+    const ulbtn = document.getElementById('dash-unlock-btn');
+    if (ulbtn) ulbtn.style.display = 'none';
+  } else {
+    const ulbtn = document.getElementById('dash-unlock-btn');
+    if (ulbtn) ulbtn.style.display = 'block';
+  }
+}
+
+// ── DASHBOARD API KEY ───────────────────────────
+function toggleDashApiPanel() {
+  const p = document.getElementById('dash-api-panel-wrap');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+function saveDashApiKey() {
+  API_KEY = document.getElementById('dash-api-input').value.trim();
+  if (API_KEY) {
+    // Sync to main api input too
+    document.getElementById('api-key-input').value = API_KEY;
+    const btn = document.getElementById('dash-api-btn');
+    btn.classList.add('active');
+    document.getElementById('dash-api-text').textContent = 'API Key ✓';
+    document.getElementById('api-btn').classList.add('active');
+    document.getElementById('api-btn-text').textContent = 'API Key ✓';
+    document.getElementById('dash-api-panel-wrap').style.display = 'none';
+    showToast('✅ API key saved! AI features are active.');
+  }
+}
+
+// ── ATS CARD (FREE, SELF-CONTAINED) ─────────────
+let ATS_CARD_OPEN = false;
+let ATS_TAB = 'paste';
+
+function toggleAtsCard() {
+  ATS_CARD_OPEN = !ATS_CARD_OPEN;
+  const card = document.getElementById('ats-dcard');
+  const expand = document.getElementById('ats-card-expand');
+  const btn = document.getElementById('ats-card-toggle-btn');
+  if (ATS_CARD_OPEN) {
+    card.classList.add('expanded');
+    expand.style.display = 'block';
+    btn.innerHTML = '✕ Close ATS Check';
+    card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  } else {
+    card.classList.remove('expanded');
+    expand.style.display = 'none';
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Check My ATS Score';
+  }
+}
+
+function switchAtsTab(tab) {
+  ATS_TAB = tab;
+  document.getElementById('ats-paste-panel').style.display = tab === 'paste' ? 'block' : 'none';
+  document.getElementById('ats-form-panel').style.display = tab === 'form' ? 'block' : 'none';
+  document.getElementById('ats-tab-paste').className = 'ats-card-tab' + (tab==='paste'?' active':'');
+  document.getElementById('ats-tab-form').className = 'ats-card-tab' + (tab==='form'?' active':'');
+}
+
+function atsCardDrop(e) {
+  e.preventDefault();
+  document.getElementById('ats-card-drop').classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f) atsCardReadFile(f);
+}
+function atsCardFileInput(e) { const f = e.target.files[0]; if (f) atsCardReadFile(f); }
+function atsCardReadFile(f) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('ats-card-resume-text').value = ev.target.result;
+    document.getElementById('ats-drop-txt').textContent = '✅ ' + f.name + ' loaded!';
+    document.getElementById('ats-card-drop').style.borderColor = '#10b981';
+  };
+  reader.readAsText(f);
+}
+
+async function runCardATS(detailed) {
+  const jd = document.getElementById('ats-card-jd').value.trim();
+  if (!jd) { showToast('⚠ Please paste a job description first.'); return; }
+
+  let resumeText = '';
+  if (ATS_TAB === 'paste') {
+    resumeText = document.getElementById('ats-card-resume-text').value.trim();
+    if (!resumeText) { showToast('⚠ Please paste or upload your resume first.'); return; }
+  } else {
+    const r = getResume();
+    resumeText = `Name: ${r.name}\nSkills: ${r.skills}\nDegree: ${r.degree} from ${r.college} CGPA: ${r.cgpa}\nExperience: ${r.experience}\nProjects: ${r.projects}\nTarget: ${r.target}`;
+    if (!r.skills && !r.experience) { showToast('⚠ Please fill your resume form first (Step 2-5).'); return; }
+  }
+
+  const resultBox = document.getElementById('ats-card-result');
+  const ring = document.getElementById('ats-card-ring');
+  const titleEl = document.getElementById('ats-card-title');
+  const subEl = document.getElementById('ats-card-sub');
+  const feedbackEl = document.getElementById('ats-card-feedback');
+  const runBtn = document.getElementById('ats-run-quick');
+  const upsell = document.getElementById('ats-card-upsell');
+
+  resultBox.style.display = 'block';
+  ring.className = 'ats-score-ring empty';
+  ring.textContent = '⏳';
+  titleEl.textContent = 'Analyzing your resume...';
+  subEl.textContent = 'AI is comparing against the job description';
+  feedbackEl.textContent = '';
+  upsell.style.display = 'none';
+  runBtn.disabled = true;
+  runBtn.innerHTML = '<span class="spin">⟳</span> Checking...';
+
+  if (false) { // proxy handles auth - no key needed from students
+
+  const prompt = `ATS analyzer for India job market.
+Line 1 MUST be exactly "ATS Score: XX/100"
+Then provide:
+## Matched Keywords (comma separated list)
+## Missing Keywords (comma separated list)  
+## Top Improvements (3-4 specific actionable fixes)
+${detailed ? '## Detailed Analysis\n## Suggested Career Objective' : ''}
+RESUME: ${resumeText.substring(0, 1500)}
+JOB DESCRIPTION: ${jd.substring(0, 800)}`;
+
+  try {
+    const res = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1200,messages:[{role:'user',content:prompt}]})
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const result = data.content?.map(c=>c.text||'').join('') || '';
+
+    const score = parseInt((result.match(/ATS Score:\s*(\d+)/i)||[])[1]) || 0;
+    ring.textContent = score + '%';
+    if (score >= 70) {
+      ring.className = 'ats-score-ring high';
+      titleEl.textContent = '✅ Strong Match — ' + score + '/100';
+      subEl.textContent = 'Your resume aligns well. Add missing keywords to push above 85%.';
+    } else if (score >= 45) {
+      ring.className = 'ats-score-ring mid';
+      titleEl.textContent = '⚠ Moderate Match — ' + score + '/100';
+      subEl.textContent = 'Add missing keywords and strengthen your experience section.';
+      upsell.style.display = 'block';
+    } else {
+      ring.className = 'ats-score-ring low';
+      titleEl.textContent = '❌ Low Match — ' + score + '/100';
+      subEl.textContent = 'Follow the improvements below to boost your score significantly.';
+      upsell.style.display = 'block';
+    }
+    feedbackEl.textContent = result.replace(/ATS Score:\s*\d+\/100\s*/i, '').trim();
+
+    // Track it
+    if (typeof trackAI === 'function') trackAI('ats');
+
+    // Update dashboard stat
+    const cur = parseInt(document.getElementById('d-ats-count').textContent) || 0;
+    document.getElementById('d-ats-count').textContent = cur + 1;
+
+  } catch(err) {
+    ring.textContent = '✕';
+    titleEl.textContent = 'Error';
+    subEl.textContent = err.message;
+  }
+  runBtn.disabled = false;
+  runBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Quick ATS Score';
+}
+
+// ── STEP NAV ──────────────────────────────────────
+function goStep(n) {
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.step-item').forEach(s => s.classList.remove('active'));
+  document.getElementById('sp-' + n).classList.add('active');
+  document.getElementById('si-' + n).classList.add('active');
+  CUR_STEP = n;
+  window.scrollTo({top:0,behavior:'smooth'});
+  if (n === 7) { genPreview(); }
+}
+function nextStep() { if (CUR_STEP < TOTAL_STEPS - 1) goStep(CUR_STEP + 1); }
+function prevStep() { if (CUR_STEP > 0) goStep(CUR_STEP - 1); }
+
+function markStepDone(n) {
+  const si = document.getElementById('si-' + n);
+  const sn = document.getElementById('sn-' + n);
+  if (!si.classList.contains('active')) si.classList.add('done');
+  sn.textContent = '✓';
+}
+
+// ── API KEY ────────────────────────────────────────
+function toggleApiPanel() {
+  const p = document.getElementById('api-panel-wrap');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+function saveApiKey() {
+  API_KEY = document.getElementById('api-key-input').value.trim();
+  if (API_KEY) {
+    const btn = document.getElementById('api-btn');
+    btn.classList.add('active');
+    document.getElementById('api-btn-text').textContent = 'API Key ✓';
+    document.getElementById('api-panel-wrap').style.display = 'none';
+    showToast('✅ API key saved! AI features are active.');
+  }
+}
+
+// ── PAYMENT ────────────────────────────────────────
+function openPayModal() { document.getElementById('pay-modal').classList.add('open'); }
+function closePayModal() { document.getElementById('pay-modal').classList.remove('open'); }
+
+function startPayment() {
+  if (RAZORPAY_KEY.includes('REPLACE')) {
+    activatePremium('demo_' + Date.now());
+    closePayModal();
+    showToast('🎉 Demo: Premium activated! Replace RAZORPAY_KEY for real payments.');
+    return;
+  }
+  const options = {
+    key: RAZORPAY_KEY, amount: 10000, currency: 'INR',
+    name: 'Resumiq', description: 'Student Lifetime Access',
+    handler: (r) => { activatePremium(r.razorpay_payment_id); closePayModal(); },
+    prefill: { name: document.getElementById('r-name').value, email: document.getElementById('r-email').value },
+    theme: { color: '#6366f1' }
+  };
+  try { new Razorpay(options).open(); }
+  catch(e) { activatePremium('demo_fallback'); closePayModal(); }
+}
+
+function activatePremium(id) {
+  IS_PAID = true;
+  localStorage.setItem('resumiq_paid', id);
+  document.getElementById('unlock-btn').style.display = 'none';
+  updatePremiumCards();
+  showToast('🎉 Full access unlocked! All tools are now available.');
+}
+function checkPaid() {
+  if (localStorage.getItem('resumiq_paid')) activatePremium(localStorage.getItem('resumiq_paid'));
+}
+
+// ── AUTOSAVE ───────────────────────────────────────
+let saveTimer;
+function autoSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    localStorage.setItem('resumiq_data', JSON.stringify(getResume()));
+    const b = document.getElementById('save-badge');
+    b.classList.add('show');
+    setTimeout(() => b.classList.remove('show'), 2000);
+    updateScore();
+    // mark step done based on current step
+    markStepDone(CUR_STEP);
+  }, 700);
+}
+function loadSaved() {
+  try {
+    const d = JSON.parse(localStorage.getItem('resumiq_data') || '{}');
+    const m = {name:'r-name',email:'r-email',phone:'r-phone',city:'r-city',linkedin:'r-linkedin',degree:'r-degree',college:'r-college',year:'r-year',cgpa:'r-cgpa',skills:'r-skills',soft:'r-soft',experience:'r-experience',projects:'r-projects',achievements:'r-achievements',target:'r-target'};
+    for(const[k,id] of Object.entries(m)) { if(d[k]) document.getElementById(id).value = d[k]; }
+    updateScore();
+  } catch(e) {}
+}
+
+// ── LIVE SCORE ─────────────────────────────────────
+function updateScore() {
+  const r = getResume();
+  const checks = [r.name||r.email, r.degree, r.skills, r.experience, r.projects, r.target, r.phone, r.college];
+  const done = checks.filter(Boolean).length;
+  const pct = Math.round(done / checks.length * 100);
+  const bar = document.getElementById('score-bar');
+  bar.style.width = pct + '%';
+  bar.style.background = pct >= 75 ? 'var(--green)' : pct >= 40 ? 'var(--amber)' : 'var(--primary)';
+  document.getElementById('score-pct').textContent = pct + '% complete';
+  document.getElementById('score-emoji').textContent = pct >= 85 ? '🌟' : pct >= 60 ? '🚀' : pct >= 30 ? '💪' : '📝';
+}
+
+// ── RESUME DATA ────────────────────────────────────
+function getResume() {
+  return {
+    name:document.getElementById('r-name').value, email:document.getElementById('r-email').value,
+    phone:document.getElementById('r-phone').value, city:document.getElementById('r-city').value,
+    linkedin:document.getElementById('r-linkedin').value, degree:document.getElementById('r-degree').value,
+    college:document.getElementById('r-college').value, year:document.getElementById('r-year').value,
+    cgpa:document.getElementById('r-cgpa').value, skills:document.getElementById('r-skills').value,
+    soft:document.getElementById('r-soft').value, experience:document.getElementById('r-experience').value,
+    projects:document.getElementById('r-projects').value, achievements:document.getElementById('r-achievements').value,
+    target:document.getElementById('r-target').value,
+    objective:document.getElementById('ai-objective').textContent||''
+  };
+}
+
+// ── CLAUDE API ─────────────────────────────────────
+async function callClaude(prompt, elId, msg) {
+  const el = document.getElementById(elId);
+  if (false) { // proxy handles auth
+  el.style.display='block'; el.classList.add('loading','typing');
+  el.textContent = msg||'AI is thinking...';
+  try {
+    const res = await fetch(PROXY_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1200,messages:[{role:'user',content:prompt}]})
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content?.map(c=>c.text||'').join('')||'';
+    el.textContent=text; el.classList.remove('loading','typing');
+    return text;
+  } catch(err) {
+    el.textContent='❌ '+err.message; el.classList.remove('loading','typing');
+    return null;
+  }
+}
+
+// ── AI ACTIONS ─────────────────────────────────────
+async function aiEnhance(field) {
+  const r = getResume();
+  const content = field==='experience'?r.experience:r.projects;
+  const label = field==='experience'?'internship/work experience':'projects';
+  if (!content.trim()) { alert('Please write your '+label+' first.'); return; }
+  const prompt = `Rewrite this ${label} for an Indian student's resume.
+Rules: Strong action verbs, quantify results, • bullet points, professional, don't invent facts.
+Student: ${r.degree} from ${r.college}, skills: ${r.skills}
+Raw content: ${content}
+Output ONLY the bullet points.`;
+  await callClaude(prompt,'ai-'+field,'✦ Rewriting with action verbs...');
+}
+
+async function aiObjective() {
+  const r = getResume();
+  if (!r.target&&!r.skills) { alert('Fill target role and skills first.'); return; }
+  const prompt = `Write a 2-3 sentence career objective for an Indian student's resume.
+Student: ${r.name||'Student'}, ${r.degree} from ${r.college}, graduating ${r.year}
+Target: ${r.target}, Skills: ${r.skills}, CGPA: ${r.cgpa}
+Rules: Strong opener, mention target & skills, under 60 words, ATS-friendly, human tone.
+Output ONLY the objective.`;
+  await callClaude(prompt,'ai-objective','✦ Writing career objective...');
+}
+
+async function runATS(detailed) {
+  const r = getResume(); const jd = document.getElementById('jd-input').value;
+  if (!jd.trim()) { alert('Please paste a job description first.'); return; }
+  document.getElementById('ats-ring').className='ats-circle empty';
+  document.getElementById('ats-ring').textContent='...';
+  document.getElementById('ats-title').textContent='Analyzing...';
+  document.getElementById('ats-sub').textContent='Comparing your resume with the job description...';
+  const prompt = `ATS analyzer for India job market.
+Line 1 MUST be "ATS Score: XX/100"
+Then: ## Matched Keywords (comma list)\n## Missing Keywords (comma list)\n## Top 3-4 Improvements
+${detailed?'## Section-by-section Analysis\n## Better career objective suggestion':''}
+RESUME: ${r.name}|${r.skills}|${r.degree} from ${r.college} CGPA:${r.cgpa}|Experience:${r.experience}|Projects:${r.projects}
+JOB: ${jd}`;
+  const result = await callClaude(prompt,'ai-ats','✦ Running ATS check...');
+  if (result) {
+    const score = parseInt((result.match(/ATS Score:\s*(\d+)/i)||[])[1])||0;
+    const ring = document.getElementById('ats-ring');
+    const bar = document.getElementById('ats-bar');
+    ring.textContent = score+'%';
+    bar.style.width = score+'%';
+    if (score>=70) { ring.className='ats-circle high'; bar.style.background='var(--green)'; document.getElementById('ats-title').textContent='✅ Strong Match'; document.getElementById('ats-sub').textContent='Your resume matches well. Add missing keywords to push above 85%.'; }
+    else if (score>=45) { ring.className='ats-circle mid'; bar.style.background='var(--amber)'; document.getElementById('ats-title').textContent='⚠ Moderate Match'; document.getElementById('ats-sub').textContent='Add missing keywords and strengthen your experience section.'; }
+    else { ring.className='ats-circle low'; bar.style.background='var(--red)'; document.getElementById('ats-title').textContent='❌ Low Match'; document.getElementById('ats-sub').textContent='Follow the improvements to boost your score significantly.'; }
+  }
+}
+
+async function findJobs() {
+  const r = getResume();
+  const loc = document.getElementById('j-loc').value||'India';
+  const exp = document.getElementById('j-exp').value;
+  const sal = document.getElementById('j-salary').value;
+  const types = ['ft','in','rm'].filter(t=>document.getElementById('jt-'+t).checked).map(t=>({ft:'Full-time',in:'Internship',rm:'Remote'}[t]));
+  document.getElementById('jobs-static').style.display='none';
+  const prompt = `Suggest 6 job roles for this Indian student.
+Profile: Skills:${r.skills||'N/A'} | ${r.degree} from ${r.college} CGPA:${r.cgpa} | Experience:${r.experience||'Fresher'} | Target:${r.target} | Location:${loc} | Type:${types.join(',')||'Any'} | Level:${exp} | Salary:${sal}
+For each: **[Job Title]** at [Company type]\n• Why it fits: [1 sentence]\n• Salary: ₹X–Y LPA\n• Skills they have: [2-3]\n• Skills to add: [1-2]\n• Apply on: [platform]\nIndia-market specific.`;
+  await callClaude(prompt,'ai-jobs','✦ Finding best roles for you...');
+  await callClaude(`For Indian ${exp} with skills "${r.skills}" in ${loc}: List top 4 job portals with one specific tip each.\n**Portal** — [tip]\nConcise. India-focused.`,'ai-platforms','✦ Finding best platforms...');
+}
+
+async function aiCoverLetter() {
+  const r = getResume();
+  if (!r.name&&!r.skills) { alert('Please fill your resume details first.'); return; }
+  const jd = document.getElementById('jd-input').value;
+  const prompt = `Write a cover letter for this Indian student.
+Student: ${r.name}, ${r.degree} from ${r.college} | Skills: ${r.skills} | Experience: ${r.experience} | Target: ${r.target}
+${jd?'JD: '+jd.substring(0,300):''}
+3 paragraphs: opening, skills fit, eager closing. Under 250 words. Professional but warm.`;
+  const result = await callClaude(prompt,'ai-cover','✦ Writing cover letter...');
+  if (result) document.getElementById('cover-dl').style.display='block';
+}
+
+async function optimizeLinkedIn(section) {
+  const r = getResume();
+  const target = document.getElementById('li-target').value||r.target;
+  const companies = document.getElementById('li-companies').value;
+  const prompts = {
+    headline:`3 LinkedIn headline options for Indian student: ${r.degree} from ${r.college}, Skills: ${r.skills}, Target: ${target}. Under 220 chars each. Keyword-rich. Format: Option 1: ...\nOption 2: ...\nOption 3: ...`,
+    about:`LinkedIn About section for: ${r.name}, ${r.degree} from ${r.college}, Skills: ${r.skills}, Experience: ${r.experience}, Target: ${target}${companies?', Companies: '+companies:''}. 200-250 words, first person, story-driven, end with CTA. India context.`,
+    skills:`Top 15 LinkedIn skills to add for Indian student targeting ${target} with current skills: ${r.skills}. Numbered list. Prioritize by recruiter search volume in India.`
+  };
+  const elIds = {headline:'ai-li-headline',about:'ai-li-about',skills:'ai-li-skills'};
+  await callClaude(prompts[section],elIds[section],'✦ Optimizing LinkedIn '+section+'...');
+}
+
+async function genInterviewQs() {
+  const r = getResume();
+  const role = document.getElementById('iv-role').value||r.target;
+  const type = document.getElementById('iv-type').value;
+  const jd = document.getElementById('iv-jd')?document.getElementById('iv-jd').value:'';
+  const prompt = `Generate 10 interview questions for Indian student.
+Type: ${type} | Role: ${role} | Skills: ${r.skills} | Education: ${r.degree} from ${r.college} | Experience: ${r.experience||'Fresher'} | CGPA: ${r.cgpa}
+${jd?'JD: '+jd.substring(0,300):''}
+Format: Q1: [question]\n→ Tip: [how to answer this]\nMix technical + behavioral. Specific to their skills.`;
+  await callClaude(prompt,'ai-interview-qs','✦ Generating your interview questions...');
+}
+
+async function genInterviewTips() {
+  const r = getResume();
+  const role = document.getElementById('iv-role').value||r.target;
+  const type = document.getElementById('iv-type').value;
+  const prompt = `Interview tips for Indian ${r.degree||'student'} targeting ${role||'a job'}. Type: ${type}. Background: Skills: ${r.skills}, CGPA: ${r.cgpa}, Experience: ${r.experience||'Fresher'}.
+Give: ## Before Interview (3 tips) ## During Interview (3 tips) ## Mistakes to Avoid (3 India-specific) ## Salary Negotiation (2 tips)
+Practical. India-market specific.`;
+  await callClaude(prompt,'ai-interview-tips','✦ Generating tips...');
+}
+
+// ── IMPORT ─────────────────────────────────────────
+function openImport() { document.getElementById('import-modal').classList.add('open'); }
+function closeImport() { document.getElementById('import-modal').classList.remove('open'); }
+function handleDragOver(e) { e.preventDefault(); document.getElementById('import-drop').classList.add('over'); }
+function handleFileDrop(e) { e.preventDefault(); document.getElementById('import-drop').classList.remove('over'); const f=e.dataTransfer.files[0]; if(f) readFile(f); }
+function handleFileInput(e) { const f=e.target.files[0]; if(f) readFile(f); }
+function readFile(f) {
+  const reader = new FileReader();
+  reader.onload = e => { document.getElementById('import-text').value=e.target.result; document.getElementById('import-drop').innerHTML='<div class="import-zone-icon">✅</div><div style="font-size:14px;font-weight:600;color:var(--green);">'+f.name+' loaded!</div><div style="font-size:12px;color:var(--ink4);margin-top:4px;">Click "AI Fill All Fields" below</div>'; };
+  reader.readAsText(f);
+}
+
+async function aiParseResume() {
+  const text = document.getElementById('import-text').value.trim();
+  if (!text) { alert('Please paste or upload your resume first.'); return; }
+  const btn=document.getElementById('parse-btn'); btn.textContent='⏳ Parsing...'; btn.disabled=true;
+  const el=document.getElementById('ai-parse-status'); el.style.display='block'; el.classList.add('loading','typing'); el.textContent='✦ Reading your resume...';
+  if (false) { // proxy handles auth
+  const prompt = `Extract info from this resume. Return ONLY valid JSON (no markdown):
+${text}
+Keys: {"name":"","email":"","phone":"","city":"","linkedin":"","degree":"","college":"","year":"","cgpa":"","skills":"comma-sep tech skills","soft":"comma-sep soft skills","experience":"multi-line","projects":"multi-line","achievements":"","target":""}`;
+  try {
+    const res = await fetch(PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,messages:[{role:'user',content:prompt}]})});
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const parsed = JSON.parse(data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim());
+    const m={name:'r-name',email:'r-email',phone:'r-phone',city:'r-city',linkedin:'r-linkedin',degree:'r-degree',college:'r-college',year:'r-year',cgpa:'r-cgpa',skills:'r-skills',soft:'r-soft',experience:'r-experience',projects:'r-projects',achievements:'r-achievements',target:'r-target'};
+    let filled=0;
+    for(const[k,id] of Object.entries(m)) { if(parsed[k]) { document.getElementById(id).value=parsed[k]; filled++; } }
+    autoSave();
+    el.textContent='✅ Done! '+filled+' fields filled. Close this window and review.';
+    el.classList.remove('loading','typing');
+    el.style.borderColor='rgba(16,185,129,.3)';
+    showToast('✅ Resume imported! '+filled+' fields filled.');
+  } catch(err) {
+    el.textContent='❌ '+err.message;
+    el.classList.remove('loading','typing');
+  }
+  btn.textContent='✦ AI Fill All Fields'; btn.disabled=false;
+}
+
+// ── TEMPLATE SELECTOR ──────────────────────────────
+function selectTemplate(name) {
+  TPL = name;
+  document.querySelectorAll('.tpl-card').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('tpl-'+name).classList.add('sel');
+  genPreview();
+}
+
+// ── RESUME PREVIEW ─────────────────────────────────
+function genPreview() {
+  const r = getResume();
+  const obj = document.getElementById('ai-objective').textContent||r.target;
+  const exp = document.getElementById('ai-experience').textContent||r.experience;
+  const proj = document.getElementById('ai-projects').textContent||r.projects;
+
+  const fields = [r.name||r.email, r.degree||r.college, r.skills, r.experience, r.projects, obj||r.target];
+  fields.forEach((f,i)=>{ const d=document.getElementById('chk'+i); if(d) d.className=f&&f.trim()?'ck done':'ck empty'; });
+
+  const skills = r.skills.split(',').map(s=>s.trim()).filter(Boolean);
+  const li = (t) => `<li>${t.replace(/^[•\-\*]\s*/,'')}</li>`;
+  const ul = (text) => text.split('\n').filter(Boolean).map(li).join('');
+
+  const sections = () => `
+    ${obj?`<div class="rp-sec"><h2>Career Objective</h2><p>${obj}</p></div>`:''}
+    ${r.degree?`<div class="rp-sec"><h2>Education</h2><div class="rp-edu-row"><span class="rp-edu-t">${r.degree}</span><span class="rp-edu-y">${r.year||''}</span></div><div class="rp-edu-s">${r.college||''}${r.cgpa?' · CGPA '+r.cgpa:''}</div></div>`:''}
+    ${skills.length?`<div class="rp-sec"><h2>Technical Skills</h2><div>${skills.map(s=>`<span class="rp-skill">${s}</span>`).join('')}</div></div>`:''}
+    ${r.soft?`<div class="rp-sec"><h2>Soft Skills</h2><p>${r.soft}</p></div>`:''}
+    ${exp?`<div class="rp-sec"><h2>Experience</h2><ul>${ul(exp)}</ul></div>`:''}
+    ${proj?`<div class="rp-sec"><h2>Projects</h2><ul>${ul(proj)}</ul></div>`:''}
+    ${r.achievements?`<div class="rp-sec"><h2>Achievements &amp; Certifications</h2><ul>${ul(r.achievements)}</ul></div>`:''}
+  `;
+
+  const contact = (sep=' · ') => [r.email,r.phone,r.city,r.linkedin].filter(Boolean).join(sep);
+  const contactSpans = () => [r.email,r.phone,r.city,r.linkedin].filter(Boolean).map(x=>`<span>${x}</span>`).join('');
+
+  let html = '';
+  if (TPL==='modern') {
+    html = `<div class="rp-m" id="print-area"><div class="rp-name">${r.name||'Your Name'}</div><div class="rp-bar"></div><div class="rp-contact">${[r.email,r.phone,r.city,r.linkedin].filter(Boolean).map(x=>`<span>${x}</span>`).join('')}</div>${sections()}</div>`;
+  } else if (TPL==='classic') {
+    html = `<div class="rp-c" id="print-area"><div class="rp-name">${r.name||'Your Name'}</div><div class="rp-contact">${contactSpans()}</div>${sections()}</div>`;
+  } else {
+    html = `<div class="rp-n" id="print-area"><div class="rp-sidebar"></div><div class="rp-main"><div class="rp-name">${r.name||'Your Name'}</div><div class="rp-contact">${contactSpans()}</div>${sections()}</div></div>`;
+  }
+  document.getElementById('resume-preview-box').innerHTML = html;
+}
+
+// ── DOWNLOADS ──────────────────────────────────────
+function downloadPDF() {
+  genPreview();
+  const content = document.getElementById('print-area');
+  if (!content) { alert('Click "Refresh Preview" first.'); return; }
+  const r = getResume();
+  const styles = Array.from(document.styleSheets).map(s=>{try{return Array.from(s.cssRules).map(r=>r.cssText).join('\n');}catch(e){return '';}}).join('\n');
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${r.name||'Resume'}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <style>${styles}body{background:#fff!important;padding:28px!important;max-width:780px;margin:0 auto;}.rp-m,.rp-c,.rp-n{border-radius:0!important;}</style>
+  <script>window.onload=()=>window.print();<\/script></head><body>${content.outerHTML}</body></html>`);
+  w.document.close();
+}
+
+function downloadWord() {
+  genPreview();
+  const r = getResume();
+  const content = document.getElementById('print-area');
+  if (!content) { alert('Click "Refresh Preview" first.'); return; }
+  const blob = new Blob(['\ufeff', `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset='utf-8'><style>body{font-family:Calibri,sans-serif;color:#0f172a;margin:1in;}.rp-name{font-size:20pt;font-weight:bold;margin-bottom:4px;}.rp-bar{height:2pt;background:#6366f1;margin-bottom:8px;}.rp-contact,.rp-c .rp-contact{font-size:10pt;color:#475569;margin-bottom:12px;}.rp-contact span{margin-right:12px;}h2{font-size:9pt;font-weight:bold;text-transform:uppercase;letter-spacing:1pt;border-bottom:1pt solid #e2e8f0;padding-bottom:2px;margin:12px 0 6px;}p,li{font-size:10pt;color:#334155;line-height:1.5;}ul{margin-left:12px;}.rp-skill{font-size:9.5pt;padding:1px 6px;border:1px solid #ddd;margin:2px;display:inline-block;}.rp-edu-row{display:flex;justify-content:space-between;}.rp-edu-t{font-size:11pt;font-weight:bold;}.rp-edu-s,.rp-edu-y{font-size:9pt;color:#64748b;}.rp-sidebar{display:none;}.rp-n .rp-main{margin-left:0;}.rp-c .rp-name{text-align:center;font-size:18pt;}</style></head><body>${content.innerHTML}</body></html>`], {type:'application/msword'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${r.name||'Resume'}_Resumiq.doc`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+function downloadCoverLetter() {
+  const text = document.getElementById('ai-cover').textContent;
+  if (!text||text.includes('⚠')) { alert('Generate a cover letter first.'); return; }
+  const r = getResume();
+  const blob = new Blob(['\ufeff',`<html><head><meta charset='utf-8'><style>body{font-family:Calibri,sans-serif;max-width:650px;margin:1in auto;color:#0f172a;line-height:1.7;font-size:11pt;}p{margin-bottom:14px;}</style></head><body><p><strong>${r.name||''}</strong><br>${r.email||''} · ${r.phone||''}</p><br>${text.split('\n\n').map(p=>`<p>${p}</p>`).join('')}</body></html>`],{type:'application/msword'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download=`${r.name||'Cover'}_Letter.doc`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function shareWhatsApp() {
+  const r = getResume();
+  const msg = `Hi! I just built my resume using *Resumiq* 🚀\n\nIt helped me:\n✦ Build a professional resume with AI\n✦ Check ATS score\n✦ Find job matches\n✦ Prepare for interviews\n\nAll for just *₹100 one-time* 🎯\n\nTry it free → resumiq.in`;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+
+// ── TOAST ──────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+</script>
+
+<script>
+// ── ADMIN TRACKING PATCHES ─────────────────────────────────
+// Must run AFTER all functions above are defined
+(function() {
+  const _origActivatePremium = activatePremium;
+  activatePremium = function(id) {
+    _origActivatePremium(id);
+    trackPayment(id);
+  };
+
+  const _origDownloadWord = downloadWord;
+  downloadWord = function() {
+    _origDownloadWord();
+    trackResume('Word');
+  };
+
+  const _origDownloadPDF = downloadPDF;
+  downloadPDF = function() {
+    _origDownloadPDF();
+    trackResume('PDF');
+  };
+
+  const _origGenPreview = genPreview;
+  genPreview = function() {
+    _origGenPreview();
+    trackResume('Created');
+  };
+
+  const _origRunATS = runATS;
+  runATS = function(detailed) {
+    _origRunATS(detailed);
+    trackAI('ats');
+  };
+})();
+</script>
+</body>
+</html>
