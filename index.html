@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Resumiq — AI Resume Builder for Indian Students</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0a0a0f;
+  --surface:#13131a;
+  --surface2:#1a1a24;
+  --border:rgba(255,255,255,.08);
+  --border2:rgba(255,255,255,.14);
+  --accent:#7c6cfc;
+  --accent2:#a78bfa;
+  --green:#34d399;
+  --red:#f87171;
+  --yellow:#fbbf24;
+  --text:#f1f0ff;
+  --text2:#a39fcc;
+  --text3:#5d5880;
+  --font-h:'Syne',sans-serif;
+  --font-b:'DM Sans',sans-serif;
+  --r:14px;
+  --r2:10px;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);font-size:14px;line-height:1.6;min-height:100vh;}
+
+/* ── UTILS ── */
+.hidden{display:none!important;}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:var(--r2);font-family:var(--font-h);font-weight:700;font-size:13px;cursor:pointer;border:none;transition:all .2s;text-decoration:none;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:#6b5ce7;transform:translateY(-1px);}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2);}
+.btn-ghost:hover{background:var(--surface2);color:var(--text);}
+.btn-green{background:var(--green);color:#052e16;}
+.btn-green:hover{background:#10b981;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px;}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.tag-purple{background:rgba(124,108,252,.15);color:var(--accent2);border:1px solid rgba(124,108,252,.2);}
+.tag-green{background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.2);}
+.tag-yellow{background:rgba(251,191,36,.1);color:var(--yellow);border:1px solid rgba(251,191,36,.2);}
+input,textarea,select{background:var(--surface2);border:1.5px solid var(--border2);border-radius:var(--r2);padding:11px 14px;font-family:var(--font-b);font-size:14px;color:var(--text);outline:none;width:100%;transition:border .2s;}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);}
+textarea{resize:vertical;min-height:80px;}
+label{font-size:12px;color:var(--text2);font-weight:500;margin-bottom:5px;display:block;}
+.form-row{display:grid;gap:14px;margin-bottom:14px;}
+.cols2{grid-template-columns:1fr 1fr;}
+.spin{display:inline-block;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e1e2e;border:1px solid var(--border2);color:var(--text);padding:12px 22px;border-radius:40px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── LANDING ── */
+#landing{display:block;}
+.land-nav{display:flex;align-items:center;justify-content:space-between;padding:20px 40px;border-bottom:1px solid var(--border);}
+.logo{font-family:var(--font-h);font-size:20px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:10px;}
+.logo-mark{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;}
+.hero{max-width:800px;margin:80px auto;padding:0 40px;text-align:center;}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(124,108,252,.1);border:1px solid rgba(124,108,252,.2);padding:6px 16px;border-radius:40px;font-size:12px;color:var(--accent2);margin-bottom:28px;}
+.hero h1{font-family:var(--font-h);font-size:58px;font-weight:800;line-height:1.1;margin-bottom:20px;}
+.hero h1 span{color:var(--accent2);}
+.hero p{font-size:17px;color:var(--text2);margin-bottom:36px;max-width:520px;margin-left:auto;margin-right:auto;}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:1000px;margin:60px auto;padding:0 40px;}
+.feat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px;}
+.feat-icon{font-size:28px;margin-bottom:12px;}
+.feat-card h3{font-family:var(--font-h);font-size:15px;font-weight:700;margin-bottom:6px;}
+.feat-card p{font-size:13px;color:var(--text2);line-height:1.5;}
+.price-section{max-width:480px;margin:40px auto 80px;padding:0 40px;text-align:center;}
+.price-card{background:linear-gradient(135deg,rgba(124,108,252,.15),rgba(167,139,250,.08));border:1px solid rgba(124,108,252,.3);border-radius:var(--r);padding:36px;}
+.price-num{font-family:var(--font-h);font-size:52px;font-weight:800;color:var(--accent2);}
+
+/* ── OVERLAY / MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
+.overlay.open{opacity:1;pointer-events:all;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:36px;width:100%;max-width:440px;transform:translateY(16px);transition:transform .25s;}
+.overlay.open .modal{transform:translateY(0);}
+.modal-logo{display:flex;align-items:center;gap:10px;font-family:var(--font-h);font-weight:800;font-size:18px;margin-bottom:20px;}
+.tabs{display:flex;background:var(--surface2);border-radius:10px;padding:4px;margin-bottom:24px;gap:4px;}
+.tab{flex:1;padding:9px;text-align:center;border:none;background:transparent;color:var(--text2);font-family:var(--font-h);font-weight:700;font-size:13px;cursor:pointer;border-radius:7px;transition:all .2s;}
+.tab.active{background:var(--accent);color:#fff;}
+.err-msg{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);color:var(--red);border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:12px;display:none;}
+.modal input{margin-bottom:12px;}
+.modal-footer{font-size:11px;color:var(--text3);text-align:center;margin-top:14px;}
+
+/* ── DASHBOARD ── */
+#dashboard{display:none;}
+.dash-nav{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:50;}
+.dash-nav-right{display:flex;align-items:center;gap:10px;}
+.user-pill{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:40px;padding:6px 14px 6px 8px;}
+.avatar{width:28px;height:28px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-h);font-size:12px;font-weight:700;color:#fff;}
+.trial-pill{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.2);color:var(--yellow);border-radius:40px;padding:5px 12px;font-size:11px;font-weight:700;}
+.dash-body{max-width:1100px;margin:0 auto;padding:28px;}
+.dash-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px;}
+.tool-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:22px;cursor:pointer;transition:all .2s;position:relative;}
+.tool-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,108,252,.15);}
+.tool-card.locked{opacity:.6;}
+.tool-card.locked:hover{transform:none;border-color:var(--border);}
+.tool-icon{font-size:28px;margin-bottom:12px;}
+.tool-card h3{font-family:var(--font-h);font-size:14px;font-weight:700;margin-bottom:5px;}
+.tool-card p{font-size:12px;color:var(--text2);line-height:1.4;}
+.lock-badge{position:absolute;top:14px;right:14px;background:rgba(251,191,36,.15);color:var(--yellow);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;}
+
+/* ── TOOL PANEL ── */
+.panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:80;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+.panel-overlay.open{opacity:1;pointer-events:all;}
+.panel{background:var(--surface);border:1px solid var(--border2);border-radius:20px;width:100%;max-width:640px;max-height:88vh;overflow-y:auto;padding:28px;transform:scale(.96);transition:transform .2s;}
+.panel-overlay.open .panel{transform:scale(1);}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
+.panel-title{font-family:var(--font-h);font-size:18px;font-weight:800;}
+.close-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text2);cursor:pointer;font-size:20px;line-height:1;}
+.ai-out{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2);padding:16px;margin-top:14px;font-size:13px;color:var(--text2);line-height:1.7;min-height:60px;white-space:pre-wrap;display:none;}
+.ai-out.loading::after{content:'';display:inline-block;width:6px;height:14px;background:var(--accent2);animation:blink .7s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+
+/* ATS score ring */
+.ats-ring{width:90px;height:90px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-h);font-size:20px;font-weight:800;border:4px solid var(--border2);margin:0 auto 14px;}
+.ats-ring.high{border-color:var(--green);color:var(--green);}
+.ats-ring.mid{border-color:var(--yellow);color:var(--yellow);}
+.ats-ring.low{border-color:var(--red);color:var(--red);}
+
+/* ── JOB BOARD ── */
+.job-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:16px;}
+.job-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:18px;transition:border .2s;}
+.job-card:hover{border-color:var(--accent);}
+.job-role{font-family:var(--font-h);font-size:14px;font-weight:700;margin-bottom:3px;}
+.job-co{font-size:12px;color:var(--text2);margin-bottom:6px;}
+.job-sal{font-size:12px;font-weight:600;color:var(--green);margin-bottom:8px;}
+.job-skills{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
+.job-skill{background:rgba(124,108,252,.12);color:var(--accent2);border-radius:5px;padding:2px 8px;font-size:10px;font-weight:600;}
+.job-links{display:flex;gap:6px;flex-wrap:wrap;}
+.job-link{padding:5px 11px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;border:none;cursor:pointer;transition:opacity .15s;}
+.job-link:hover{opacity:.8;}
+.jl-n{background:#ff6b35;color:#fff;}
+.jl-i{background:#00c2a8;color:#fff;}
+.jl-l{background:#0a66c2;color:#fff;}
+
+/* ── RESUME BUILDER ── */
+.steps{display:flex;gap:6px;margin-bottom:24px;flex-wrap:wrap;}
+.step-btn{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text2);transition:all .2s;}
+.step-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.resume-preview{background:#fff;color:#111;border-radius:var(--r);padding:28px;font-family:'DM Sans',sans-serif;font-size:12px;line-height:1.5;min-height:400px;}
+.resume-preview h1{font-size:20px;font-weight:700;margin-bottom:2px;}
+.resume-preview h2{font-size:13px;font-weight:700;border-bottom:1.5px solid #111;padding-bottom:3px;margin:14px 0 6px;}
+.resume-preview .contact{font-size:11px;color:#555;margin-bottom:6px;}
+
+/* ── ADMIN ── */
+#admin-panel{display:none;min-height:100vh;background:var(--bg);}
+.admin-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;}
+.admin-body{max-width:1200px;margin:0 auto;padding:24px 28px;}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;}
+.stat-num{font-family:var(--font-h);font-size:32px;font-weight:800;}
+.stat-lbl{font-size:12px;color:var(--text2);margin-top:3px;}
+.data-table{width:100%;border-collapse:collapse;}
+.data-table th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;background:var(--surface2);border-bottom:1px solid var(--border);}
+.data-table td{padding:11px 14px;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border);}
+.data-table tr:last-child td{border:none;}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.badge-paid{background:rgba(52,211,153,.1);color:var(--green);}
+.badge-free{background:rgba(255,255,255,.05);color:var(--text3);}
+
+@media(max-width:700px){
+  .hero h1{font-size:36px;}
+  .features-grid,.dash-grid{grid-template-columns:1fr;}
+  .stat-grid{grid-template-columns:1fr 1fr;}
+  .land-nav{padding:16px 20px;}
+  .hero,.price-section{padding:0 20px;}
+  .dash-body{padding:16px;}
+}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<!-- ══ LANDING ══ -->
+<div id="landing">
+  <nav class="land-nav">
+    <div class="logo"><div class="logo-mark">R</div>Resumiq</div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" onclick="openLogin('signin')">Sign In</button>
+      <button class="btn btn-primary" onclick="startFree()">Start Free →</button>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-badge">✦ AI-Powered · Made for India · ₹100 Lifetime</div>
+    <h1>Build Resumes That <span>Get You Hired</span></h1>
+    <p>AI writes your resume, checks ATS score, matches jobs on Naukri & LinkedIn — all in one place.</p>
+    <div class="hero-btns">
+      <button class="btn btn-primary" style="font-size:15px;padding:14px 32px;" onclick="startFree()">⚡ Start Free — 10 Uses</button>
+      <button class="btn btn-ghost" onclick="openLogin('signin')">Already have account</button>
+    </div>
+  </div>
+
+  <div class="features-grid">
+    <div class="feat-card"><div class="feat-icon">🤖</div><h3>AI Resume Builder</h3><p>Type your raw details. Claude AI rewrites every section with strong action verbs and keywords.</p></div>
+    <div class="feat-card"><div class="feat-icon">📊</div><h3>ATS Score Checker</h3><p>Paste any job description. Get your score, missing keywords, and specific fixes instantly.</p></div>
+    <div class="feat-card"><div class="feat-icon">🔎</div><h3>Smart Job Matcher</h3><p>AI matches your skills to live jobs on Naukri, Internshala, and LinkedIn.</p></div>
+    <div class="feat-card"><div class="feat-icon">📂</div><h3>Import Old Resume</h3><p>Upload your PDF/text resume. AI reads it and fills your profile automatically.</p></div>
+    <div class="feat-card"><div class="feat-icon">💼</div><h3>LinkedIn Optimizer</h3><p>AI writes your headline, About section, and skill recommendations for maximum visibility.</p></div>
+    <div class="feat-card"><div class="feat-icon">🎯</div><h3>Interview Prep</h3><p>Get 10 likely interview questions for any role with tips on how to answer each one.</p></div>
+  </div>
+
+  <div class="price-section">
+    <div class="price-card">
+      <div class="tag tag-green" style="margin-bottom:12px;">10 Uses Free · No Credit Card</div>
+      <div class="price-num">₹100</div>
+      <div style="font-size:14px;color:var(--text2);margin:6px 0 20px;">One-time · Lifetime access · All features</div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:15px;padding:14px;" onclick="startFree()">Get Started Free →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LOGIN MODAL ══ -->
+<div class="overlay" id="auth-modal">
+  <div class="modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+    <div class="modal-logo" style="margin-bottom:0;"><div class="logo-mark">R</div>Resumiq</div>
+    <button onclick="closeAuthModal()" style="background:none;border:none;color:var(--text3);font-size:24px;cursor:pointer;line-height:1;padding:4px 8px;">×</button>
+  </div>
+    <div class="tabs">
+      <button class="tab active" id="tab-si" onclick="switchTab('signin')">Sign In</button>
+      <button class="tab" id="tab-su" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+
+    <!-- Sign In -->
+    <div id="si-form">
+      <div class="err-msg" id="si-err"></div>
+      <label>Email</label>
+      <input id="si-email" type="email" placeholder="your@email.com" autocomplete="email"/>
+      <label>Password</label>
+      <input id="si-pass" type="password" placeholder="Your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doSignIn()"/>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px;" id="si-btn" onclick="doSignIn()">Sign In →</button>
+      <div style="display:flex;align-items:center;gap:10px;margin:14px 0;"><div style="flex:1;height:1px;background:var(--border);"></div><span style="font-size:11px;color:var(--text3);">or</span><div style="flex:1;height:1px;background:var(--border);"></div></div>
+      <button onclick="doGoogleLogin()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:11px;background:var(--surface2);border:1.5px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:var(--font-b);font-size:14px;cursor:pointer;transition:border .2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Continue with Google
+      </button>
+      <div class="modal-footer" style="margin-top:10px;">Don't have account? <a href="#" onclick="switchTab('signup');return false;" style="color:var(--accent2);">Sign Up free</a></div>
+    </div>
+
+    <!-- Sign Up -->
+    <div id="su-form" style="display:none;">
+      <div class="err-msg" id="su-err"></div>
+      <label>Full Name</label>
+      <input id="su-name" type="text" placeholder="Mahendra Singh" autocomplete="name"/>
+      <label>Email</label>
+      <input id="su-email" type="email" placeholder="your@email.com" autocomplete="email"/>
+      <label>Password</label>
+      <input id="su-pass" type="password" placeholder="Min 6 characters" onkeydown="if(event.key==='Enter')doSignUp()"/>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px;" id="su-btn" onclick="doSignUp()">Create Free Account →</button>
+      <div style="display:flex;align-items:center;gap:10px;margin:14px 0;"><div style="flex:1;height:1px;background:var(--border);"></div><span style="font-size:11px;color:var(--text3);">or</span><div style="flex:1;height:1px;background:var(--border);"></div></div>
+      <button onclick="doGoogleLogin()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:11px;background:var(--surface2);border:1.5px solid var(--border2);border-radius:var(--r2);color:var(--text);font-family:var(--font-b);font-size:14px;cursor:pointer;transition:border .2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Continue with Google
+      </button>
+      <div class="modal-footer">10 free AI uses · No credit card needed</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAY MODAL ══ -->
+<div class="overlay" id="pay-modal">
+  <div class="modal" style="text-align:center;">
+    <div style="font-size:40px;margin-bottom:14px;">🚀</div>
+    <div style="font-family:var(--font-h);font-size:22px;font-weight:800;margin-bottom:8px;">Unlock Full Access</div>
+    <div style="color:var(--text2);font-size:14px;margin-bottom:20px;">You've used your 10 free AI credits. Pay once and use forever.</div>
+    <div style="font-family:var(--font-h);font-size:48px;font-weight:800;color:var(--accent2);margin-bottom:6px;">₹100</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:24px;">One-time · Lifetime · All features</div>
+    <div style="text-align:left;background:var(--surface2);border-radius:var(--r2);padding:16px;margin-bottom:20px;">
+      <div style="font-size:12px;color:var(--text2);line-height:2;">✅ Unlimited AI resume rewrites<br>✅ Unlimited ATS checks<br>✅ Job matching on Naukri, LinkedIn<br>✅ LinkedIn optimizer<br>✅ Interview prep<br>✅ PDF + Word download</div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:15px;padding:14px;" onclick="startPayment()">Pay ₹100 via Razorpay →</button>
+    <button onclick="closePayModal()" style="background:none;border:none;color:var(--text3);font-size:13px;margin-top:12px;cursor:pointer;">Maybe later</button>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div id="dashboard">
+  <nav class="dash-nav">
+    <div class="logo"><div class="logo-mark">R</div>Resumiq</div>
+    <div class="dash-nav-right">
+      <span class="trial-pill" id="trial-pill" style="display:none;"></span>
+      <button id="admin-btn" onclick="openAdmin()" style="display:none;" class="btn btn-ghost" style="font-size:12px;">⚙ Admin</button>
+      <div class="user-pill">
+        <div class="avatar" id="user-av">S</div>
+        <span id="user-name" style="font-size:13px;font-weight:600;">Student</span>
+      </div>
+      <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px;" onclick="doSignOut()">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="dash-body">
+    <!-- Welcome bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div style="font-family:var(--font-h);font-size:22px;font-weight:800;">Welcome back 👋</div>
+        <div style="font-size:13px;color:var(--text2);">What do you want to work on today?</div>
+      </div>
+      <div id="unlock-bar" style="display:none;background:linear-gradient(135deg,rgba(124,108,252,.2),rgba(167,139,250,.1));border:1px solid rgba(124,108,252,.3);border-radius:var(--r2);padding:12px 20px;display:flex;align-items:center;gap:14px;">
+        <div style="font-size:13px;color:var(--accent2);font-weight:600;">Unlock everything for just ₹100</div>
+        <button class="btn btn-primary" style="padding:8px 16px;font-size:12px;" onclick="openPayModal()">Pay Now</button>
+      </div>
+    </div>
+
+    <!-- Tools grid -->
+    <div style="font-family:var(--font-h);font-size:13px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">Free Tools</div>
+    <div class="dash-grid" style="margin-bottom:28px;">
+      <div class="tool-card" onclick="openTool('ats')">
+        <div class="tool-icon">📊</div>
+        <h3>ATS Score Checker</h3>
+        <p>Check how well your resume matches a job description</p>
+        <div class="tag tag-green" style="margin-top:10px;">Free</div>
+      </div>
+      <div class="tool-card" onclick="openTool('jobs')">
+        <div class="tool-icon">🔎</div>
+        <h3>Job Finder</h3>
+        <p>Find matching jobs on Naukri, Internshala & LinkedIn</p>
+        <div class="tag tag-green" style="margin-top:10px;">Free</div>
+      </div>
+      <div class="tool-card" onclick="openTool('builder')">
+        <div class="tool-icon">📝</div>
+        <h3>Resume Builder</h3>
+        <p>Fill your details and download a clean resume</p>
+        <div class="tag tag-green" style="margin-top:10px;">Free</div>
+      </div>
+    </div>
+
+    <div style="font-family:var(--font-h);font-size:13px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">AI Tools <span style="color:var(--yellow);font-size:10px;margin-left:6px;">USES YOUR CREDITS</span></div>
+    <div class="dash-grid">
+      <div class="tool-card" id="tc-rewrite" onclick="openTool('rewrite')">
+        <div class="tool-icon">🤖</div>
+        <h3>AI Resume Rewriter</h3>
+        <p>Claude AI rewrites your experience with strong action verbs</p>
+        <div class="tag tag-purple" style="margin-top:10px;">AI · 1 Credit</div>
+      </div>
+      <div class="tool-card" id="tc-linkedin" onclick="openTool('linkedin')">
+        <div class="tool-icon">💼</div>
+        <h3>LinkedIn Optimizer</h3>
+        <p>AI writes your headline, About section & skill recommendations</p>
+        <div class="tag tag-purple" style="margin-top:10px;">AI · 1 Credit</div>
+      </div>
+      <div class="tool-card" id="tc-interview" onclick="openTool('interview')">
+        <div class="tool-icon">🎯</div>
+        <h3>Interview Prep</h3>
+        <p>Get 10 likely questions with tips tailored to your role</p>
+        <div class="tag tag-purple" style="margin-top:10px;">AI · 1 Credit</div>
+      </div>
+      <div class="tool-card" id="tc-cover" onclick="openTool('cover')">
+        <div class="tool-icon">✉️</div>
+        <h3>Cover Letter</h3>
+        <p>AI writes a personalised cover letter for any job</p>
+        <div class="tag tag-purple" style="margin-top:10px;">AI · 1 Credit</div>
+      </div>
+      <div class="tool-card" id="tc-import" onclick="openTool('import')">
+        <div class="tool-icon">📂</div>
+        <h3>Import Resume</h3>
+        <p>Paste your old resume — AI fills your profile instantly</p>
+        <div class="tag tag-purple" style="margin-top:10px;">AI · 1 Credit</div>
+      </div>
+      <div class="tool-card" id="tc-objective" onclick="openTool('objective')">
+        <div class="tool-icon">🎓</div>
+        <h3>Career Objective</h3>
+        <p>AI writes a punchy career objective for your resume</p>
+        <div class="tag tag-purple" style="margin-top:10px;">AI · 1 Credit</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOOL PANELS ══ -->
+
+<!-- ATS -->
+<div class="panel-overlay" id="panel-ats">
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">📊 ATS Score Checker</div>
+      <button class="close-btn" onclick="closePanel('ats')">×</button>
+    </div>
+    <label>Paste Your Resume Text</label>
+    <textarea id="ats-resume" rows="5" placeholder="Paste your resume text here..."></textarea>
+    <label style="margin-top:12px;">Paste Job Description</label>
+    <textarea id="ats-jd" rows="4" placeholder="Paste the job description here..."></textarea>
+    <button class="btn btn-primary" style="margin-top:14px;" onclick="runATS()"><span id="ats-spin"></span>Check ATS Score</button>
+    <div id="ats-result" style="display:none;margin-top:16px;text-align:center;">
+      <div class="ats-ring" id="ats-ring">—</div>
+      <div style="font-family:var(--font-h);font-size:16px;font-weight:700;" id="ats-title"></div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px;" id="ats-sub"></div>
+    </div>
+    <div class="ai-out" id="ats-out"></div>
+  </div>
+</div>
+
+<!-- Jobs -->
+<div class="panel-overlay" id="panel-jobs">
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">🔎 Job Finder</div>
+      <button class="close-btn" onclick="closePanel('jobs')">×</button>
+    </div>
+    <div class="form-row cols2">
+      <div><label>Your Skills</label><input id="jb-skills" placeholder="Python, React, SQL"/></div>
+      <div><label>Target Role</label><input id="jb-role" placeholder="Software Engineer"/></div>
+    </div>
+    <div class="form-row cols2">
+      <div><label>Location</label><input id="jb-loc" placeholder="Delhi, Mumbai, Remote"/></div>
+      <div><label>Type</label>
+        <select id="jb-type">
+          <option value="both">Jobs + Internships</option>
+          <option value="jobs">Full-time Jobs</option>
+          <option value="internship">Internships Only</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="findJobs()"><span id="jobs-spin"></span>Find Jobs</button>
+    <div id="jobs-out" style="margin-top:16px;"></div>
+  </div>
+</div>
+
+<!-- Resume Builder -->
+<div class="panel-overlay" id="panel-builder">
+  <div class="panel" style="max-width:780px;">
+    <div class="panel-head">
+      <div class="panel-title">📝 Resume Builder</div>
+      <button class="close-btn" onclick="closePanel('builder')">×</button>
+    </div>
+    <div class="steps" id="builder-steps"></div>
+    <div id="builder-content"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn btn-ghost" id="prev-btn" onclick="builderNav(-1)">← Back</button>
+      <button class="btn btn-primary" id="next-btn" onclick="builderNav(1)">Next →</button>
+      <button class="btn btn-green" id="dl-btn" style="display:none;" onclick="downloadResume()">⬇ Download PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI Rewrite -->
+<div class="panel-overlay" id="panel-rewrite">
+  <div class="panel">
+    <div class="panel-head"><div class="panel-title">🤖 AI Resume Rewriter</div><button class="close-btn" onclick="closePanel('rewrite')">×</button></div>
+    <label>Your Experience (raw text)</label>
+    <textarea id="rewrite-in" rows="5" placeholder="Paste your experience or any resume section..."></textarea>
+    <label style="margin-top:12px;">Target Role</label>
+    <input id="rewrite-role" placeholder="e.g. Data Analyst, Frontend Developer"/>
+    <button class="btn btn-primary" style="margin-top:14px;" onclick="runRewrite()">✦ Rewrite with AI</button>
+    <div class="ai-out" id="rewrite-out"></div>
+  </div>
+</div>
+
+<!-- LinkedIn -->
+<div class="panel-overlay" id="panel-linkedin">
+  <div class="panel">
+    <div class="panel-head"><div class="panel-title">💼 LinkedIn Optimizer</div><button class="close-btn" onclick="closePanel('linkedin')">×</button></div>
+    <label>Your Current Role / Skills</label>
+    <input id="li-role" placeholder="e.g. Final year CSE student, Python, ML"/>
+    <label style="margin-top:12px;">Target Job</label>
+    <input id="li-target" placeholder="e.g. Data Analyst at a startup"/>
+    <button class="btn btn-primary" style="margin-top:14px;" onclick="runLinkedIn()">✦ Optimize LinkedIn</button>
+    <div class="ai-out" id="li-out"></div>
+  </div>
+</div>
+
+<!-- Interview -->
+<div class="panel-overlay" id="panel-interview">
+  <div class="panel">
+    <div class="panel-head"><div class="panel-title">🎯 Interview Prep</div><button class="close-btn" onclick="closePanel('interview')">×</button></div>
+    <label>Target Role</label>
+    <input id="int-role" placeholder="e.g. Software Engineer at TCS"/>
+    <label style="margin-top:12px;">Your Skills / Background</label>
+    <textarea id="int-bg" rows="3" placeholder="e.g. Final year, Python, Django, REST APIs..."></textarea>
+    <button class="btn btn-primary" style="margin-top:14px;" onclick="runInterview()">✦ Generate Questions</button>
+    <div class="ai-out" id="int-out"></div>
+  </div>
+</div>
+
+<!-- Cover Letter -->
+<div class="panel-overlay" id="panel-cover">
+  <div class="panel">
+    <div class="panel-head"><div class="panel-title">✉️ Cover Letter</div><button class="close-btn" onclick="closePanel('cover')">×</button></div>
+    <label>Your Name & Background</label>
+    <input id="cv-name" placeholder="e.g. Mahendra, CSE graduate, Python developer"/>
+    <label style="margin-top:12px;">Job Title & Company</label>
+    <input id="cv-job" placeholder="e.g. Software Engineer at Infosys"/>
+    <label style="margin-top:12px;">Key Skills to Highlight</label>
+    <input id="cv-skills" placeholder="e.g. Python, Django, teamwork, problem-solving"/>
+    <button class="btn btn-primary" style="margin-top:14px;" onclick="runCover()">✦ Write Cover Letter</button>
+    <div class="ai-out" id="cv-out"></div>
+  </div>
+</div>
+
+<!-- Import -->
+<div class="panel-overlay" id="panel-import">
+  <div class="panel">
+    <div class="panel-head"><div class="panel-title">📂 Import Resume</div><button class="close-btn" onclick="closePanel('import')">×</button></div>
+    <label>Paste your existing resume text</label>
+    <textarea id="imp-text" rows="8" placeholder="Paste your full resume text here — AI will extract all details and fill your profile..."></textarea>
+    <button class="btn btn-primary" style="margin-top:14px;" onclick="runImport()">✦ Extract & Fill Profile</button>
+    <div class="ai-out" id="imp-out"></div>
+  </div>
+</div>
+
+<!-- Objective -->
+<div class="panel-overlay" id="panel-objective">
+  <div class="panel">
+    <div class="panel-head"><div class="panel-title">🎓 Career Objective</div><button class="close-btn" onclick="closePanel('objective')">×</button></div>
+    <label>Your Course & College</label>
+    <input id="obj-edu" placeholder="e.g. B.Tech CSE, VIT Vellore, 2024"/>
+    <label style="margin-top:12px;">Target Role & Skills</label>
+    <input id="obj-role" placeholder="e.g. Software Developer, Python, React"/>
+    <button class="btn btn-primary" style="margin-top:14px;" onclick="runObjective()">✦ Write Objective</button>
+    <div class="ai-out" id="obj-out"></div>
+  </div>
+</div>
+
+<!-- ══ ADMIN PANEL ══ -->
+<div id="admin-panel">
+  <nav class="admin-nav">
+    <div style="font-family:var(--font-h);font-weight:800;font-size:18px;">⚙ Admin Panel</div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="font-size:12px;" onclick="loadAdmin()">↻ Refresh</button>
+      <button class="btn btn-ghost" style="font-size:12px;" onclick="showDashboard()">← Dashboard</button>
+    </div>
+  </nav>
+  <div class="admin-body">
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-num" id="a-users">—</div><div class="stat-lbl">Total Users</div></div>
+      <div class="stat-card"><div class="stat-num" id="a-paid">—</div><div class="stat-lbl">Paid Users</div></div>
+      <div class="stat-card"><div class="stat-num" id="a-rev">—</div><div class="stat-lbl">Revenue</div></div>
+      <div class="stat-card"><div class="stat-num" id="a-active">—</div><div class="stat-lbl">Active Today</div></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:20px;">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);font-family:var(--font-h);font-weight:700;">👥 All Users</div>
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="admin-users-table">
+          <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Uses</th><th>Joined</th></tr></thead>
+          <tbody id="admin-users-body"><tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text3);">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);font-family:var(--font-h);font-weight:700;">⚡ Recent Activity</div>
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr><th>User</th><th>Action</th><th>Details</th><th>Time</th></tr></thead>
+          <tbody id="admin-activity-body"><tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text3);">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ CONFIG — REPLACE THESE ══
+const SUPABASE_URL    = 'https://huskawxfnbsriulcrvsx.supabase.co';
+const SUPABASE_ANON   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh1c2thd3hmbmJzcml1bGNydnN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NjA0MTcsImV4cCI6MjA5NTUzNjQxN30.mj8IyY7Rcfh8V7mhEtbVXMrpxHzIIAr-OLOIMHKd5TQ';
+const PROXY_URL       = 'https://resumiq-proxy.mahendraa1188.workers.dev';
+const RAZORPAY_KEY    = 'rzp_test_Suo2iis6VcwKRZ';
+const ADMIN_EMAIL     = 'mahendraa1188@gmail.com';
+const FREE_LIMIT      = 10; // paid users
+const GUEST_LIMIT     = 3;  // no login needed
+
+// ══ STATE ══
+let _sb = null, USER = null, IS_PAID = false, TRIALS = 0;
+let RESUME = { name:'',email:'',phone:'',city:'',linkedin:'',degree:'',college:'',year:'',skills:'',experience:'',projects:'',objective:'' };
+let BUILDER_STEP = 0;
+
+// ══ INIT ══
+window.addEventListener('DOMContentLoaded', async () => {
+  // Load guest trial count from localStorage
+  TRIALS = parseInt(localStorage.getItem('rq_guest_trials')||'0');
+  try { _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON); } catch(e){}
+  if (_sb) {
+    const { data:{ session } } = await _sb.auth.getSession();
+    if (session?.user) { await onLogin(session.user); showDash(); }
+    _sb.auth.onAuthStateChange(async (evt, sess) => {
+      if (evt === 'SIGNED_IN' && sess?.user) { await onLogin(sess.user); closeAuthModal(); showDash(); }
+      else if (evt === 'SIGNED_OUT') { USER=null; IS_PAID=false; TRIALS=0; showLanding(); }
+    });
+  }
+});
+
+// ══ AUTH ══
+function openLogin(tab='signin') {
+  document.getElementById('auth-modal').classList.add('open');
+  switchTab(tab);
+}
+function closeAuthModal() { document.getElementById('auth-modal').classList.remove('open'); }
+function switchTab(tab) {
+  document.getElementById('si-form').style.display = tab==='signin'?'block':'none';
+  document.getElementById('su-form').style.display = tab==='signup'?'block':'none';
+  document.getElementById('tab-si').className = 'tab' + (tab==='signin'?' active':'');
+  document.getElementById('tab-su').className = 'tab' + (tab==='signup'?' active':'');
+}
+
+function startFree() {
+  // Go straight to dashboard — no login needed for first 3 uses
+  document.getElementById('landing').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  updateTrialUI();
+  // Show trial info in nav
+  const tp = document.getElementById('trial-pill');
+  if (tp && !USER) { tp.style.display='inline-block'; tp.textContent = (GUEST_LIMIT - TRIALS) + ' free credits left'; }
+}
+
+async function doGoogleLogin() {
+  if (!_sb) { toast('Supabase not configured.'); return; }
+  const { error } = await _sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin }
+  });
+  if (error) toast('Google login error: ' + error.message);
+}
+
+async function doSignIn() {
+  const email = document.getElementById('si-email').value.trim();
+  const pass = document.getElementById('si-pass').value;
+  const err = document.getElementById('si-err');
+  err.style.display='none';
+  if (!email||!pass) { err.textContent='Please enter email and password.'; err.style.display='block'; return; }
+  const btn = document.getElementById('si-btn');
+  btn.disabled=true; btn.textContent='Signing in...';
+  try {
+    if (!_sb) throw new Error('Not configured');
+    const { error } = await _sb.auth.signInWithPassword({ email, password: pass });
+    if (error) throw error;
+  } catch(e) {
+    err.textContent = e.message==='Invalid login credentials' ? 'Wrong email or password.' : e.message;
+    err.style.display='block';
+  }
+  btn.disabled=false; btn.textContent='Sign In →';
+}
+
+async function doSignUp() {
+  const name = document.getElementById('su-name').value.trim();
+  const email = document.getElementById('su-email').value.trim();
+  const pass = document.getElementById('su-pass').value;
+  const err = document.getElementById('su-err');
+  err.style.display='none';
+  if (!name||!email||!pass) { err.textContent='Please fill all fields.'; err.style.display='block'; return; }
+  if (pass.length<6) { err.textContent='Password must be at least 6 characters.'; err.style.display='block'; return; }
+  const btn = document.getElementById('su-btn');
+  btn.disabled=true; btn.textContent='Creating account...';
+  try {
+    if (!_sb) throw new Error('Not configured');
+    const { data, error } = await _sb.auth.signUp({ email, password:pass, options:{ data:{ full_name:name } } });
+    if (error) throw error;
+    if (data.user) {
+      await _sb.from('profiles').upsert({ id:data.user.id, email, name, trial_count:0, is_paid:false, created_at:new Date().toISOString() });
+      await _sb.auth.signInWithPassword({ email, password:pass });
+    }
+  } catch(e) { err.textContent=e.message; err.style.display='block'; }
+  btn.disabled=false; btn.textContent='Create Free Account →';
+}
+
+async function onLogin(user) {
+  USER = user;
+  if (!_sb) return;
+  const { data } = await _sb.from('profiles').select('*').eq('id', user.id).single();
+  if (data) { IS_PAID=data.is_paid||false; TRIALS=data.trial_count||0; if(data.name) RESUME.name=data.name; if(data.email) RESUME.email=data.email; }
+  else { await _sb.from('profiles').upsert({ id:user.id, email:user.email, name:user.user_metadata?.full_name||'', trial_count:0, is_paid:false, created_at:new Date().toISOString() }); }
+  logAct('login','signed in');
+}
+
+async function doSignOut() {
+  if (_sb) await _sb.auth.signOut();
+  toast('Signed out.'); showLanding();
+}
+
+// ══ TRIAL SYSTEM ══
+function updateTrialUI() {
+  const el = document.getElementById('trial-pill');
+  if (!el) return;
+  if (IS_PAID) { el.style.display='none'; return; }
+  const limit = USER ? FREE_LIMIT : GUEST_LIMIT;
+  const left = Math.max(0, limit - TRIALS);
+  el.style.display='inline-block';
+  el.textContent = left + ' credits left';
+  const ub = document.getElementById('unlock-bar');
+  if (ub) ub.style.display = left<=3 ? 'flex' : 'none';
+}
+
+async function useTrial() {
+  if (IS_PAID) return true;
+  // Guest user (not logged in)
+  if (!USER) {
+    if (TRIALS >= GUEST_LIMIT) {
+      openLogin('signup');
+      toast('Sign up free to get 10 more AI credits!');
+      return false;
+    }
+    TRIALS++;
+    localStorage.setItem('rq_guest_trials', TRIALS);
+    updateTrialUI();
+    return true;
+  }
+  // Logged in user
+  if (TRIALS >= FREE_LIMIT) { openPayModal(); toast('No credits left! Pay ₹100 for unlimited access.'); return false; }
+  TRIALS++;
+  updateTrialUI();
+  if (_sb && USER) await _sb.from('profiles').update({ trial_count:TRIALS }).eq('id', USER.id);
+  return true;
+}
+
+// ══ PAGES ══
+function showLanding() {
+  document.getElementById('landing').style.display='block';
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('admin-panel').style.display='none';
+}
+function showDash() {
+  document.getElementById('landing').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  document.getElementById('admin-panel').style.display='none';
+  // Update nav
+  const name = USER?.user_metadata?.full_name || USER?.email?.split('@')[0] || 'Student';
+  document.getElementById('user-name').textContent = name;
+  document.getElementById('user-av').textContent = name.charAt(0).toUpperCase();
+  if (USER?.email === ADMIN_EMAIL) document.getElementById('admin-btn').style.display='inline-flex';
+  updateTrialUI();
+}
+function openAdmin() { document.getElementById('dashboard').style.display='none'; document.getElementById('admin-panel').style.display='block'; loadAdmin(); }
+function showDashboard() { document.getElementById('admin-panel').style.display='none'; showDash(); }
+
+// ══ PAYMENT ══
+function openPayModal() { document.getElementById('pay-modal').classList.add('open'); }
+function closePayModal() { document.getElementById('pay-modal').classList.remove('open'); }
+
+function startPayment() {
+  if (RAZORPAY_KEY.includes('REPLACE')) { activatePaid('demo_'+Date.now()); closePayModal(); return; }
+  const opts = {
+    key: RAZORPAY_KEY, amount: 10000, currency:'INR',
+    name:'Resumiq', description:'Lifetime Access',
+    handler: async (r) => { await activatePaid(r.razorpay_payment_id); closePayModal(); },
+    prefill: { name: RESUME.name, email: RESUME.email||USER?.email||'' },
+    theme: { color:'#7c6cfc' }
+  };
+  try { new Razorpay(opts).open(); } catch(e) { activatePaid('demo_fallback'); closePayModal(); }
+}
+
+async function activatePaid(payId) {
+  IS_PAID = true;
+  localStorage.setItem('rq_paid', payId);
+  updateTrialUI();
+  toast('🎉 Full access unlocked! Unlimited everything.');
+  if (_sb && USER) {
+    await _sb.from('profiles').upsert({ id:USER.id, email:USER.email, is_paid:true, payment_id:payId, paid_at:new Date().toISOString() });
+    logAct('payment','₹100 — '+payId);
+  }
+}
+
+// ══ PANELS ══
+function openTool(id) {
+  const p = document.getElementById('panel-'+id);
+  if (p) p.classList.add('open');
+  if (id==='builder') initBuilder();
+}
+function closePanel(id) {
+  const p = document.getElementById('panel-'+id);
+  if (p) p.classList.remove('open');
+}
+
+// ══ AI CALL ══
+async function callAI(prompt, outId, loadMsg='✦ AI is thinking...') {
+  const allowed = await useTrial();
+  if (!allowed) return null;
+  const el = document.getElementById(outId);
+  el.style.display='block'; el.className='ai-out loading'; el.textContent=loadMsg;
+  try {
+    const res = await fetch(PROXY_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'claude-sonnet-4-5-20251022', max_tokens:1200, messages:[{role:'user',content:prompt}] })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content?.map(c=>c.text||'').join('')||'';
+    el.className='ai-out'; el.textContent=text;
+    return text;
+  } catch(e) {
+    el.className='ai-out'; el.textContent='❌ Error: '+e.message;
+    TRIALS = Math.max(0, TRIALS-1); // refund trial on error
+    return null;
+  }
+}
+
+// ══ TOOLS ══
+
+// ATS
+async function runATS() {
+  const resume = document.getElementById('ats-resume').value.trim();
+  const jd = document.getElementById('ats-jd').value.trim();
+  if (!resume||!jd) { toast('Please paste both resume and job description.'); return; }
+  const spin = document.getElementById('ats-spin');
+  spin.className='spin'; spin.textContent='⟳ ';
+  const prompt = `You are an ATS checker for Indian job market.
+Line 1: "ATS Score: XX/100"
+## Matched Keywords
+## Missing Keywords  
+## Top 3 Improvements
+RESUME: ${resume.substring(0,1500)}
+JD: ${jd.substring(0,800)}`;
+  const result = await callAI(prompt, 'ats-out', '✦ Analyzing your resume...');
+  spin.className=''; spin.textContent='';
+  if (result) {
+    const score = parseInt((result.match(/ATS Score:\s*(\d+)/i)||[])[1])||0;
+    const ring = document.getElementById('ats-ring');
+    ring.textContent = score+'%';
+    ring.className = 'ats-ring '+(score>=70?'high':score>=45?'mid':'low');
+    document.getElementById('ats-title').textContent = score>=70?'✅ Strong Match':score>=45?'⚠ Moderate Match':'❌ Weak Match';
+    document.getElementById('ats-sub').textContent = 'Score: '+score+'/100';
+    document.getElementById('ats-result').style.display='block';
+    logAct('ats_check','Score: '+score);
+  }
+}
+
+// Jobs
+async function findJobs() {
+  const skills = document.getElementById('jb-skills').value.trim();
+  const role = document.getElementById('jb-role').value.trim();
+  const loc = document.getElementById('jb-loc').value.trim()||'India';
+  const type = document.getElementById('jb-type').value;
+  if (!skills&&!role) { toast('Enter skills or role first.'); return; }
+  const out = document.getElementById('jobs-out');
+  out.innerHTML='<div style="color:var(--text2);padding:16px 0;">⟳ Finding jobs...</div>';
+  const prompt = `Find 6 job matches for Indian student. Return ONLY valid JSON array, no markdown.
+Skills: ${skills||'general'}, Role: ${role||'any'}, Location: ${loc}, Type: ${type}
+[{"role":"","company_type":"","salary":"","why_fit":"","skills":[""],"naukri_q":"","intern_q":"","linkedin_q":"","is_intern":false}]
+For internships is_intern:true. Keep queries 2-3 words.`;
+  const spin = document.getElementById('jobs-spin');
+  spin.className='spin'; spin.textContent='⟳ ';
+  const result = await callAI(prompt, '_dummy_jobs', 'Finding jobs...');
+  spin.className=''; spin.textContent='';
+  document.getElementById('_dummy_jobs') && (document.getElementById('_dummy_jobs').style.display='none');
+  if (!result) { out.innerHTML=''; return; }
+  try {
+    const jobs = JSON.parse(result.replace(/```json|```/g,'').trim());
+    const encLoc = encodeURIComponent(loc);
+    out.innerHTML='<div class="job-grid">'+jobs.map(j=>{
+      const nk=encodeURIComponent(j.naukri_q), is=encodeURIComponent(j.intern_q), li=encodeURIComponent(j.linkedin_q);
+      const nauUrl=j.is_intern?`https://naukri.com/internship-jobs?k=${nk}&l=${encLoc}`:`https://naukri.com/${j.naukri_q.replace(/\s+/g,'-')}-jobs?k=${nk}&l=${encLoc}`;
+      const intUrl=`https://internshala.com/${j.is_intern?'internships':'jobs'}/${j.intern_q.replace(/\s+/g,'-')}-${j.is_intern?'internship':'jobs'}`;
+      const liUrl=`https://linkedin.com/jobs/search/?keywords=${li}&location=${encLoc}`;
+      return `<div class="job-card">
+        <div class="job-role">${j.role}${j.is_intern?' <span style="color:var(--yellow);font-size:10px;">INTERN</span>':''}</div>
+        <div class="job-co">${j.company_type}</div>
+        <div class="job-sal">${j.salary}</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">${j.why_fit}</div>
+        <div class="job-skills">${(j.skills||[]).map(s=>`<span class="job-skill">${s}</span>`).join('')}</div>
+        <div class="job-links">
+          <a href="${nauUrl}" target="_blank" class="job-link jl-n">Naukri</a>
+          <a href="${intUrl}" target="_blank" class="job-link jl-i">Internshala</a>
+          <a href="${liUrl}" target="_blank" class="job-link jl-l">LinkedIn</a>
+        </div>
+      </div>`;
+    }).join('')+'</div>';
+    logAct('job_search', role+' in '+loc);
+  } catch(e) { out.innerHTML='<div style="color:var(--red);">Error parsing jobs. Try again.</div>'; }
+}
+// hidden dummy for AI output
+document.body.insertAdjacentHTML('beforeend','<div id="_dummy_jobs" style="display:none;"></div>');
+
+// AI Rewrite
+async function runRewrite() {
+  const exp = document.getElementById('rewrite-in').value.trim();
+  const role = document.getElementById('rewrite-role').value.trim();
+  if (!exp) { toast('Please paste your experience first.'); return; }
+  await callAI(`Rewrite this resume section for a ${role||'tech'} role in India. Use strong action verbs, add metrics where possible, make it ATS-friendly. Return only the rewritten text.\n\n${exp}`, 'rewrite-out', '✦ Rewriting with AI...');
+  logAct('ai_rewrite', role);
+}
+
+// LinkedIn
+async function runLinkedIn() {
+  const role = document.getElementById('li-role').value.trim();
+  const target = document.getElementById('li-target').value.trim();
+  if (!role) { toast('Enter your role/skills first.'); return; }
+  await callAI(`Write LinkedIn profile sections for an Indian professional:
+Background: ${role}
+Target: ${target||'tech roles in India'}
+Provide:
+1. Headline (max 120 chars)
+2. About section (3-4 paragraphs)
+3. Top 10 skills to add
+4. One tip to improve profile visibility`, 'li-out', '✦ Optimizing LinkedIn...');
+  logAct('linkedin_opt', target);
+}
+
+// Interview
+async function runInterview() {
+  const role = document.getElementById('int-role').value.trim();
+  const bg = document.getElementById('int-bg').value.trim();
+  if (!role) { toast('Enter target role first.'); return; }
+  await callAI(`Generate 10 likely interview questions for: ${role}
+Background: ${bg||'fresher'}
+For each question give: the question, why it's asked, and a strong answer tip. Format clearly.`, 'int-out', '✦ Preparing questions...');
+  logAct('interview_prep', role);
+}
+
+// Cover Letter
+async function runCover() {
+  const name = document.getElementById('cv-name').value.trim();
+  const job = document.getElementById('cv-job').value.trim();
+  const skills = document.getElementById('cv-skills').value.trim();
+  if (!name||!job) { toast('Fill name and job details.'); return; }
+  await callAI(`Write a professional cover letter for an Indian job applicant.
+Name/Background: ${name}
+Applying for: ${job}
+Key skills: ${skills}
+Make it concise (3 paragraphs), professional, and tailored for Indian companies.`, 'cv-out', '✦ Writing cover letter...');
+  logAct('cover_letter', job);
+}
+
+// Import Resume
+async function runImport() {
+  const text = document.getElementById('imp-text').value.trim();
+  if (!text) { toast('Paste your resume text first.'); return; }
+  const prompt = `Extract info from this resume. Return ONLY valid JSON, no markdown:
+${text.substring(0,2000)}
+Keys: {"name":"","email":"","phone":"","city":"","skills":"comma-separated","experience":"","projects":"","objective":"","college":"","degree":"","year":""}`;
+  const result = await callAI(prompt, 'imp-out', '✦ Reading your resume...');
+  if (result) {
+    try {
+      const d = JSON.parse(result.replace(/```json|```/g,'').trim());
+      Object.keys(d).forEach(k=>{ if(d[k]) RESUME[k]=d[k]; });
+      toast('✅ Profile filled! Go to Resume Builder to see it.');
+      logAct('import_resume','imported');
+    } catch(e) {}
+  }
+}
+
+// Career Objective
+async function runObjective() {
+  const edu = document.getElementById('obj-edu').value.trim();
+  const role = document.getElementById('obj-role').value.trim();
+  if (!edu||!role) { toast('Fill both fields.'); return; }
+  await callAI(`Write a punchy 2-3 line career objective for an Indian resume:
+Education: ${edu}
+Target: ${role}
+Make it specific, results-oriented, and suitable for Indian recruiters.`, 'obj-out', '✦ Writing objective...');
+  logAct('career_objective', role);
+}
+
+// ══ RESUME BUILDER ══
+const STEPS = ['Basic Info','Education','Skills','Experience','Projects','Preview'];
+function initBuilder() {
+  BUILDER_STEP = 0;
+  renderBuilderStep();
+}
+function renderBuilderStep() {
+  const steps = document.getElementById('builder-steps');
+  steps.innerHTML = STEPS.map((s,i)=>`<button class="step-btn${i===BUILDER_STEP?' active':''}" onclick="BUILDER_STEP=${i};renderBuilderStep()">${s}</button>`).join('');
+  const c = document.getElementById('builder-content');
+  const dlb = document.getElementById('dl-btn');
+  const nb = document.getElementById('next-btn');
+  dlb.style.display = BUILDER_STEP===5?'inline-flex':'none';
+  nb.style.display = BUILDER_STEP===5?'none':'inline-flex';
+  if (BUILDER_STEP===0) c.innerHTML=`
+    <div class="form-row cols2">
+      <div><label>Full Name</label><input id="b-name" value="${RESUME.name}" oninput="RESUME.name=this.value" placeholder="Mahendra Singh"/></div>
+      <div><label>Email</label><input id="b-email" value="${RESUME.email}" oninput="RESUME.email=this.value" placeholder="you@email.com"/></div>
+    </div>
+    <div class="form-row cols2">
+      <div><label>Phone</label><input id="b-phone" value="${RESUME.phone}" oninput="RESUME.phone=this.value" placeholder="9876543210"/></div>
+      <div><label>City</label><input id="b-city" value="${RESUME.city}" oninput="RESUME.city=this.value" placeholder="Delhi"/></div>
+    </div>
+    <label>LinkedIn URL</label><input value="${RESUME.linkedin}" oninput="RESUME.linkedin=this.value" placeholder="linkedin.com/in/yourname"/>`;
+  else if (BUILDER_STEP===1) c.innerHTML=`
+    <div class="form-row cols2">
+      <div><label>Degree</label><input value="${RESUME.degree}" oninput="RESUME.degree=this.value" placeholder="B.Tech CSE"/></div>
+      <div><label>College</label><input value="${RESUME.college}" oninput="RESUME.college=this.value" placeholder="VIT Vellore"/></div>
+    </div>
+    <div class="form-row cols2">
+      <div><label>Year</label><input value="${RESUME.year}" oninput="RESUME.year=this.value" placeholder="2024"/></div>
+    </div>
+    <label>Career Objective</label><textarea oninput="RESUME.objective=this.value" placeholder="Your career objective...">${RESUME.objective}</textarea>`;
+  else if (BUILDER_STEP===2) c.innerHTML=`
+    <label>Technical Skills (comma separated)</label>
+    <textarea oninput="RESUME.skills=this.value" placeholder="Python, React, MySQL, Git...">${RESUME.skills}</textarea>`;
+  else if (BUILDER_STEP===3) c.innerHTML=`
+    <label>Experience (describe each role)</label>
+    <textarea rows="8" oninput="RESUME.experience=this.value" placeholder="Company Name | Role | Duration&#10;• What you did&#10;• Impact achieved">${RESUME.experience}</textarea>`;
+  else if (BUILDER_STEP===4) c.innerHTML=`
+    <label>Projects</label>
+    <textarea rows="8" oninput="RESUME.projects=this.value" placeholder="Project Name | Tech Stack&#10;• What you built&#10;• Key features / results">${RESUME.projects}</textarea>`;
+  else if (BUILDER_STEP===5) {
+    c.innerHTML=`<div class="resume-preview" id="resume-preview-box">
+      <h1>${RESUME.name||'Your Name'}</h1>
+      <div class="contact">${[RESUME.email,RESUME.phone,RESUME.city,RESUME.linkedin].filter(Boolean).join(' · ')}</div>
+      ${RESUME.objective?`<h2>Objective</h2><p>${RESUME.objective}</p>`:''}
+      ${RESUME.degree?`<h2>Education</h2><p>${RESUME.degree}${RESUME.college?' — '+RESUME.college:''}${RESUME.year?', '+RESUME.year:''}</p>`:''}
+      ${RESUME.skills?`<h2>Skills</h2><p>${RESUME.skills}</p>`:''}
+      ${RESUME.experience?`<h2>Experience</h2><p style="white-space:pre-line;">${RESUME.experience}</p>`:''}
+      ${RESUME.projects?`<h2>Projects</h2><p style="white-space:pre-line;">${RESUME.projects}</p>`:''}
+    </div>`;
+  }
+}
+function builderNav(dir) { BUILDER_STEP=Math.max(0,Math.min(STEPS.length-1,BUILDER_STEP+dir)); renderBuilderStep(); }
+function downloadResume() {
+  const box = document.getElementById('resume-preview-box');
+  if (!box) return;
+  const w = window.open('','','width=800,height=900');
+  w.document.write(`<html><head><title>Resume — ${RESUME.name}</title><style>body{font-family:'DM Sans',Arial,sans-serif;font-size:13px;line-height:1.5;padding:36px;color:#111;max-width:780px;margin:auto;}h1{font-size:22px;font-weight:700;}h2{font-size:14px;font-weight:700;border-bottom:1.5px solid #111;padding-bottom:3px;margin:16px 0 6px;}.contact{font-size:12px;color:#555;}</style></head><body>${box.innerHTML}<script>window.onload=()=>window.print();</sc`+'ript></body></html>');
+  w.document.close();
+  logAct('download_pdf','PDF downloaded');
+}
+
+// ══ ADMIN ══
+async function loadAdmin() {
+  if (!_sb) return;
+  try {
+    const [{ data:profiles }, { data:activity }] = await Promise.all([
+      _sb.from('profiles').select('*').order('created_at',{ascending:false}),
+      _sb.from('activity_log').select('*').order('created_at',{ascending:false}).limit(40)
+    ]);
+    const today = new Date().toISOString().split('T')[0];
+    const paid = profiles?.filter(p=>p.is_paid).length||0;
+    document.getElementById('a-users').textContent = profiles?.length||0;
+    document.getElementById('a-paid').textContent = paid;
+    document.getElementById('a-rev').textContent = '₹'+(paid*100).toLocaleString('en-IN');
+    document.getElementById('a-active').textContent = [...new Set(activity?.filter(a=>a.created_at?.startsWith(today)).map(a=>a.user_id))].length||0;
+    document.getElementById('admin-users-body').innerHTML = (profiles||[]).map(p=>`<tr>
+      <td style="font-weight:600;">${p.name||'—'}</td>
+      <td>${p.email}</td>
+      <td><span class="badge ${p.is_paid?'badge-paid':'badge-free'}">${p.is_paid?'Paid':'Free'}</span></td>
+      <td>${p.trial_count||0}/${FREE_LIMIT}</td>
+      <td>${p.created_at?new Date(p.created_at).toLocaleDateString('en-IN'):'—'}</td>
+    </tr>`).join('')||'<tr><td colspan="5" style="text-align:center;padding:24px;">No users yet</td></tr>';
+    const icons={'login':'👋','ats_check':'📊','ai_rewrite':'🤖','job_search':'🔎','payment':'💳','cover_letter':'✉️','import_resume':'📂','download_pdf':'⬇'};
+    document.getElementById('admin-activity-body').innerHTML = (activity||[]).map(a=>`<tr>
+      <td>${a.email||'—'}</td>
+      <td>${icons[a.action]||'⚡'} ${a.action?.replace(/_/g,' ')}</td>
+      <td style="color:var(--text3);">${a.details||''}</td>
+      <td>${a.created_at?new Date(a.created_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}):''}</td>
+    </tr>`).join('')||'<tr><td colspan="4" style="text-align:center;padding:24px;">No activity yet</td></tr>';
+  } catch(e) { toast('Admin error: '+e.message); }
+}
+
+// ══ ACTIVITY LOG ══
+async function logAct(action, details='') {
+  if (!_sb||!USER) return;
+  try {
+    await _sb.from('activity_log').insert({ user_id:USER.id, email:USER.email, name:RESUME.name||USER.email, action, details, created_at:new Date().toISOString() });
+  } catch(e){}
+}
+
+// ══ TOAST ══
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+</script>
+</body>
+</html>
