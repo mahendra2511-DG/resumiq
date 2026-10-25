@@ -67,3 +67,19 @@ revoke all on function public.rq_bump_usage(text, date, int, int) from public, a
 
 -- tidy old usage rows now and then (optional)
 delete from public.rq_usage where day < current_date - 14;
+
+-- 4) Usage events for the owner's admin panel (written only by the server with the service role key)
+create table if not exists public.rq_events (
+  id bigserial primary key,
+  ts timestamptz not null default now(),
+  day date,
+  kind text not null,
+  page text, ref text, vid text,
+  uid uuid, email text,
+  dev text, country text, city text,
+  detail text
+);
+create index if not exists rq_events_ts_idx on public.rq_events(ts desc);
+create index if not exists rq_events_uid_idx on public.rq_events(uid);
+alter table public.rq_events enable row level security; -- no policies: browsers can't read or write it
+delete from public.rq_events where ts < now() - interval '180 days';

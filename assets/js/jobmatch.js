@@ -31,7 +31,7 @@
     const jd = $("#jd-txt").value.trim(); if (RS.words(jd) < 25) return err("Paste the full job description (at least a few lines).");
     A = { resume: r, jd, title: $("#jd-title").value.trim(), company: $("#jd-co").value.trim() };
     an = store.save({ kind: "analysis", title: "", data: { jd, title: A.title, company: A.company, resumeId: r.id || "", resumeTitle: r.title || "Pasted resume", resumeText: r.obj ? "" : r.text.slice(0, 20000), decisions: {} } });
-    deep = null; run(true);
+    deep = null; run(true); RQ.track("job_match", A.title || "");
   };
   function run(first) {
     const d = an.data, res = JD.analyze(A.resume.obj || A.resume.text, d.jd, d.decisions);

@@ -64,4 +64,13 @@ async function bump(key, limit, delta) {
 }
 async function usage(key) { return bump(key, 1e9, 0); }
 
-module.exports = { SUPABASE_URL, SUPABASE_ANON, SERVICE, ADMIN_EMAIL, send, body, originOk, ipOf, hash, istDay, userFrom, bump, usage };
+// Usage events for the owner's admin panel (needs SUPABASE_SERVICE_ROLE_KEY; silently skipped otherwise)
+const devOf = (ua) => /ipad|tablet/i.test(ua || "") ? "tablet" : /mobi|android|iphone/i.test(ua || "") ? "mobile" : "desktop";
+async function logEvent(req, row) {
+  if (!SERVICE) return;
+  const h = (k) => { const v = req.headers[k]; return v ? decodeURIComponent(String(v)).slice(0, 60) : null; };
+  const r = Object.assign({ day: istDay(), dev: devOf(req.headers["user-agent"]), country: h("x-vercel-ip-country"), city: h("x-vercel-ip-city") }, row);
+  ["kind", "page", "ref", "vid", "email", "detail"].forEach(k => { if (r[k] != null) r[k] = String(r[k]).slice(0, 200); });
+  try { await fetch(SUPABASE_URL + "/rest/v1/rq_events", { method: "POST", headers: { apikey: SERVICE, Authorization: "Bearer " + SERVICE, "Content-Type": "application/json", Prefer: "return=minimal" }, body: JSON.stringify(r) }); } catch (e) {}
+}
+module.exports = { logEvent, devOf, SUPABASE_URL, SUPABASE_ANON, SERVICE, ADMIN_EMAIL, send, body, originOk, ipOf, hash, istDay, userFrom, bump, usage };

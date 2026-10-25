@@ -56,6 +56,7 @@
   }
   function create(r, title) {
     r = RS.normalize(r); const d = store.save({ kind: "resume", title: title || ((r.targetRole || "My") + " resume"), data: r });
+    RQ.track(r.fromSample ? "sample_open" : "resume_create", r.targetRole || "");
     cur = "contact"; openEnt.clear(); jdDoc = null; $("#pv-jobtab").hidden = true; if (tab === "job") setTab("preview");
     history.replaceState(null, "", "/studio?id=" + encodeURIComponent(d.id)); open(d); return d;
   }
@@ -497,12 +498,13 @@ const ICO = { contact: "👤", summary: "📝", experience: "💼", projects: "�
     setup: () => wizard({ edit: true }),
   };
   async function phOk() { const n = (RS.text(R).match(/\[[^\]]+\]/g) || []).length; if (!n) return true; return RQ.confirm(`Your resume still has ${n} [placeholder]${n > 1 ? "s" : ""} (highlighted in yellow). Recruiters will see them. Download anyway?`, "Download anyway"); }
-  $("#st-docx").onclick = async () => { if (!R || !(await phOk())) return; const b = $("#st-docx"); aiBusy(b, true, "Word…"); try { download(await RS.docx(R), RS.fileName(R, "docx")); } catch (e) { toast(e.message, "bad"); } aiBusy(b, false); };
+  $("#st-docx").onclick = async () => { if (!R || !(await phOk())) return; const b = $("#st-docx"); aiBusy(b, true, "Word…"); try { download(await RS.docx(R), RS.fileName(R, "docx")); RQ.track("download_docx", R.targetRole || ""); } catch (e) { toast(e.message, "bad"); } aiBusy(b, false); };
   $("#st-pdf").onclick = async () => {
     if (!R || !(await phOk())) return; const pr = $("#print-root"); pr.innerHTML = '<div class="doc"></div>'; RS.mount(pr.firstChild, R, { nobreaks: true, quiet: true }); pr.firstChild.style.minHeight = "";
     let ps = document.getElementById("rq-page-css"); if (!ps) { ps = document.createElement("style"); ps.id = "rq-page-css"; document.head.appendChild(ps); } ps.textContent = RS.printCSS(docEl);
     const t0 = document.title; document.title = RS.fileName(R, "pdf").replace(/\.pdf$/, ""); document.body.classList.add("printing");
     const done = () => { document.body.classList.remove("printing"); document.title = t0; pr.innerHTML = ""; window.removeEventListener("afterprint", done); };
+    RQ.track("download_pdf", R.targetRole || "");
     window.addEventListener("afterprint", done); setTimeout(() => { window.print(); setTimeout(() => { if (document.body.classList.contains("printing")) done(); }, 1500); }, 60);
   };
 

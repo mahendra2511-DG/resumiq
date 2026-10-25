@@ -94,8 +94,9 @@
         if (tab === "signup") {
           const { data, error } = await sb.auth.signUp({ email, password: pass, options: { data: { full_name: name }, emailRedirectTo: location.origin + "/app" } });
           if (error) throw error;
+          track("signup");
           if (!data.session) { closeModal(); modal(`<h3>Check your email 📬</h3><p>We sent a confirmation link to <b>${esc(email)}</b>. Open it to finish creating your account, then sign in.</p>`); return; }
-        } else { const { error } = await sb.auth.signInWithPassword({ email, password: pass }); if (error) throw error; }
+        } else { const { error } = await sb.auth.signInWithPassword({ email, password: pass }); if (error) throw error; track("login"); }
         closeModal(); toast("Welcome to Resumiq!", "ok");
       } catch (x) { err(/invalid login/i.test(x.message) ? "Wrong email or password." : /already registered/i.test(x.message) ? "This email already has an account. Sign in instead." : x.message); }
       go.disabled = false; go.textContent = tab === "signup" ? "Create free account" : "Sign in";
@@ -157,10 +158,16 @@
     };
   })();
 
+  /* ---------- anonymous usage events for the owner's admin panel ---------- */
+  const vid = (() => { let v = ls.get("rq_vid", ""); if (!/^[a-z0-9]{8,40}$/i.test(v)) { v = (Date.now().toString(36) + Math.random().toString(36).slice(2, 12)); ls.set("rq_vid", v); } return v; })();
+  async function track(k, d) {
+    try { if (navigator.doNotTrack === "1") return; const t = await token(); const q = new URLSearchParams(location.search);
+      fetch("/api/track", { method: "POST", keepalive: true, headers: Object.assign({ "Content-Type": "application/json" }, t ? { Authorization: "Bearer " + t } : {}), body: JSON.stringify({ k, d: d || "", p: location.pathname + (q.get("ref") ? "?ref=" + q.get("ref") : ""), r: q.get("ref") || document.referrer || "", v: vid }) }).catch(() => {}); } catch (e) {}
+  }
   /* ---------- AI (server: /api/ai → Grok or Groq) ---------- */
   async function ai(mode, payload) {
     const t = await token(); let r, j = null;
-    try { r = await fetch(CFG.AI_URL, { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, t ? { Authorization: "Bearer " + t } : {}), body: JSON.stringify(Object.assign({ mode }, payload || {})) }); j = await r.json().catch(() => null); }
+    try { r = await fetch(CFG.AI_URL, { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, t ? { Authorization: "Bearer " + t } : {}), body: JSON.stringify(Object.assign({ mode, vid, page: location.pathname }, payload || {})) }); j = await r.json().catch(() => null); }
     catch (e) { throw new Error("You seem to be offline. Check your internet and try again."); }
     if (j && typeof j.left === "number") { aiLeft = j.left; renderCredits(); }
     if (r.ok && j && j.ok) return j;
@@ -240,9 +247,9 @@
   window.DEXA_CA = { panel: "#dx-panel", toggle: () => dexaToggle(), close: () => dexaToggle(false) };
 
   /* ---------- boot ---------- */
-  window.RQ = { CFG, $, $$, esc, uid, debounce, ls, rel, fmtDay, toast, modal, closeModal, confirm: confirmBox, store, ai, md, authModal, signOut, onAuth, get user() { return user; }, get sb() { return sb; }, token, displayName, dexa: { toggle: dexaToggle, ask: dexaAsk }, renderCredits };
+  window.RQ = { track, CFG, $, $$, esc, uid, debounce, ls, rel, fmtDay, toast, modal, closeModal, confirm: confirmBox, store, ai, md, authModal, signOut, onAuth, get user() { return user; }, get sb() { return sb; }, token, displayName, dexa: { toggle: dexaToggle, ask: dexaAsk }, renderCredits };
   document.addEventListener("DOMContentLoaded", () => {
     if (!document.body.hasAttribute("data-nochrome")) { header(); footer(); }
-    dexaPanel(); initAuth();
+    dexaPanel(); initAuth().finally(() => { if (!/^\/admin/.test(location.pathname)) track("visit"); });
   });
 })();

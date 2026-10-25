@@ -120,6 +120,7 @@ module.exports = async (req, res) => {
       else { const j = parseJSON(r.text); if (j && (!M.need || M.need(j))) out = M.out(j); }
     }
     if (!out) throw new Error("bad_output");
+    await L.logEvent(req, { kind: "ai", detail: b.mode, vid: /^[a-z0-9]{8,40}$/i.test(String(b.vid || "")) ? String(b.vid) : null, uid: user ? user.id : null, email: user ? user.email : null, page: String(b.page || "").slice(0, 60) || null });
     return L.send(res, 200, Object.assign({ ok: true, left: Math.max(0, limit - n) }, out));
   } catch (e) {
     await L.bump(key, limit, -1); // don't charge for failures
