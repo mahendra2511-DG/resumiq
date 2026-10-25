@@ -5,7 +5,7 @@ const crypto = require("crypto");
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://huskawxfnbsriulcrvsx.supabase.co";
 const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh1c2thd3hmbmJzcml1bGNydnN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NjA0MTcsImV4cCI6MjA5NTUzNjQxN30.mj8IyY7Rcfh8V7mhEtbVXMrpxHzIIAr-OLOIMHKd5TQ";
-const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const SERVICE = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "mahendraa1188@gmail.com").toLowerCase();
 
 function send(res, code, obj) { res.statusCode = code; res.setHeader("Content-Type", "application/json; charset=utf-8"); res.setHeader("Cache-Control", "no-store"); res.end(JSON.stringify(obj)); }

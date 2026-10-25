@@ -6,10 +6,14 @@ const L = require("./_lib");
 const GUEST = +process.env.AI_DAILY_GUEST || 10, USER = +process.env.AI_DAILY_USER || 40, ADMIN = +process.env.AI_DAILY_ADMIN || 500;
 
 /* ---------- provider ---------- */
+const env = (k) => String(process.env[k] || "").trim();
 function provider() {
+  // tolerate common name mix-ups: a gsk_ key is Groq, an xai- key is Grok, whatever the variable is called
+  const keys = ["GROQ_API_KEY", "XAI_API_KEY", "GROK_API_KEY", "GROQ_KEY", "XAI_KEY"].map(env).filter(Boolean);
+  const groq = keys.find(k => /^gsk_/.test(k)) || env("GROQ_API_KEY"), xai = keys.find(k => /^xai-/.test(k)) || env("XAI_API_KEY") || env("GROK_API_KEY");
   if (process.env.AI_BASE_URL && process.env.AI_API_KEY) return { name: "custom", base: process.env.AI_BASE_URL.replace(/\/$/, ""), key: process.env.AI_API_KEY, prefer: [] };
-  if (process.env.XAI_API_KEY) return { name: "grok", base: (process.env.XAI_BASE_URL || "https://api.x.ai/v1").replace(/\/$/, ""), key: process.env.XAI_API_KEY, prefer: [/^grok-4.*fast.*non-reasoning/i, /^grok-4.*fast/i, /^grok-3-mini$/i, /^grok-3-mini/i, /^grok-4/i, /^grok-3$/i, /^grok/i] };
-  if (process.env.GROQ_API_KEY) return { name: "groq", base: (process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1").replace(/\/$/, ""), key: process.env.GROQ_API_KEY, prefer: [/^llama-3\.3-70b-versatile$/i, /^openai\/gpt-oss-120b$/i, /^meta-llama\/llama-4-maverick/i, /^meta-llama\/llama-4/i, /^llama-3\.1-70b/i, /llama/i, /gpt-oss/i] };
+  if (xai && !/^gsk_/.test(xai)) return { name: "grok", base: (process.env.XAI_BASE_URL || "https://api.x.ai/v1").replace(/\/$/, ""), key: xai, prefer: [/^grok-4.*fast.*non-reasoning/i, /^grok-4.*fast/i, /^grok-3-mini$/i, /^grok-3-mini/i, /^grok-4/i, /^grok-3$/i, /^grok/i] };
+  if (groq) return { name: "groq", base: (process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1").replace(/\/$/, ""), key: groq, prefer: [/^llama-3\.3-70b-versatile$/i, /^openai\/gpt-oss-120b$/i, /^meta-llama\/llama-4-maverick/i, /^meta-llama\/llama-4/i, /^llama-3\.1-70b/i, /llama/i, /gpt-oss/i] };
   return null;
 }
 let modelCache = { at: 0, ids: [] };
@@ -100,7 +104,9 @@ Return JSON: {"roles":[{"title":"","fit":"strong|good|stretch","why":"","keyword
 module.exports = async (req, res) => {
   if (!L.originOk(req)) return L.send(res, 403, { ok: false, error: "origin", message: "Requests from this site are not allowed." });
   const P = provider();
-  if (req.method === "GET") return L.send(res, 200, { ok: true, provider: P ? P.name : null, limits: { guest: GUEST, user: USER } });
+  if (req.method === "GET") return L.send(res, 200, { ok: true, provider: P ? P.name : null, limits: { guest: GUEST, user: USER },
+    // setup check: only true/false, never the key values
+    check: { vercelEnv: process.env.VERCEL_ENV || "unknown", GROQ_API_KEY: !!env("GROQ_API_KEY"), XAI_API_KEY: !!env("XAI_API_KEY"), SUPABASE_SERVICE_ROLE_KEY: !!L.SERVICE, deployment: (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 7) || null } });
   if (req.method !== "POST") return L.send(res, 405, { ok: false, error: "method", message: "Use POST." });
   const b = await L.body(req); const M = MODES[b.mode];
   if (!M) return L.send(res, 400, { ok: false, error: "bad_request", message: "Unknown AI action." });
