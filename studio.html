@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resume Studio — Resumiq</title>
+<meta name="description" content="Build a truthful, ATS-friendly resume with live preview, role-specific guidance, a transparent quality score and Dexa AI suggestions. Free.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400&family=Carlito:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/rq.css?v=2">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+</head>
+<body data-page="studio" data-nochrome>
+<header class="st-top">
+  <a href="/" class="logo" aria-label="Resumiq home"><span class="logo-mark">R</span><span class="hide-t">Resumiq</span></a>
+  <input class="st-title" id="st-title" aria-label="Resume name" maxlength="80" value="Untitled resume">
+  <span class="st-saved" id="st-saved"></span>
+  <button type="button" class="st-ats" id="st-ats" title="ATS score: click for details">ATS <b id="st-ats-n">–</b><span class="hide-t">/100</span></button>
+  <span class="st-sp"></span>
+  <button type="button" class="icon-btn hide-t" id="st-undo" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+  <button type="button" class="icon-btn hide-t" id="st-redo" title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
+  <div class="dd" id="st-more"><button type="button" class="btn btn-ghost btn-sm" aria-expanded="false">More ▾</button>
+    <div class="dd-menu" style="left:auto;right:0;min-width:250px">
+      <a href="#" data-act="new"><span class="dd-ic">＋</span><span><b>New resume</b><span>Start with the setup wizard</span></span></a>
+      <a href="#" data-act="import"><span class="dd-ic">📥</span><span><b>Import a resume</b><span>PDF, Word or pasted text</span></span></a>
+      <a href="#" data-act="dup"><span class="dd-ic">⧉</span><span><b>Duplicate</b><span>Copy to tailor for another job</span></span></a>
+      <a href="#" data-act="version"><span class="dd-ic">🕘</span><span><b>Versions</b><span>Save or restore a version</span></span></a>
+      <a href="#" data-act="setup"><span class="dd-ic">🎯</span><span><b>Target role & level</b><span>Change role-specific guidance</span></span></a>
+      <a href="/job-match" data-act="match"><span class="dd-ic">📊</span><span><b>Match to a job</b><span>ATS & job description check</span></span></a>
+      <a href="/app"><span class="dd-ic">🏠</span><span><b>Dashboard</b></span></a>
+    </div></div>
+  <button type="button" class="btn btn-ghost btn-sm" id="st-docx" title="Download as Word (.docx)">⬇ Word</button>
+  <button type="button" class="btn btn-primary btn-sm" id="st-pdf" title="Download as PDF">⬇ PDF</button>
+  <span id="nav-user" class="hide-t"></span>
+  <input type="file" id="st-file" hidden>
+</header>
+<main class="st" id="st">
+  <section class="st-nav m-on" id="st-nav" aria-label="Resume sections"></section>
+  <section class="st-ed m-on" id="st-ed" aria-label="Editor"><div class="ed-in" id="ed"></div></section>
+  <section class="st-pv m-on" id="st-pv" aria-label="Preview and checks">
+    <div class="pv-bar"><div class="tabs" role="tablist" id="pv-tabs"><button type="button" class="on" data-t="preview">Preview</button><button type="button" data-t="score">ATS score <span class="badge brand" id="pv-score" style="margin-left:4px">0</span></button><button type="button" data-t="guide">Role guide</button><button type="button" data-t="job" id="pv-jobtab" hidden>Job</button></div></div>
+    <div id="pv-preview" style="display:flex;flex-direction:column;flex:1">
+      <div class="pv-tools" id="pv-tools"></div>
+      <div class="pv-wrap" id="pv-wrap"><div id="pv-box"><div class="pv-scale" id="pv-scale"><div class="doc" id="pv-doc"></div></div></div></div>
+      <p class="small muted" style="padding:0 18px 90px;margin:0">PDF tip: in the print window choose <b>Save as PDF</b>, paper <b>A4</b>, margins <b>Default</b>, and turn off <b>Headers and footers</b>.</p>
+    </div>
+    <div class="pv-pane" id="pv-score-pane" hidden></div>
+    <div class="pv-pane" id="pv-guide-pane" hidden></div>
+    <div class="pv-pane" id="pv-job-pane" hidden></div>
+  </section>
+</main>
+<nav class="st-mtabs" id="st-mtabs" aria-label="Studio views"><button type="button" data-m="nav">☰ Sections</button><button type="button" data-m="ed" class="on">✎ Edit</button><button type="button" data-m="pv">👁 Preview</button></nav>
+<div class="print-root" id="print-root"></div>
+<script src="/assets/js/core.js?v=2"></script>
+<script src="/assets/js/roles.js?v=2"></script>
+<script src="/assets/js/resume.js?v=2"></script>
+<script src="/assets/js/jd.js?v=2"></script>
+<script src="/assets/js/importer.js?v=2"></script>
+<script src="/assets/js/samples.js?v=2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+<script src="/assets/js/studio.js?v=2"></script>
+<script src="/assets/js/dexa.js?v=2" defer></script>
+</body>
+</html>

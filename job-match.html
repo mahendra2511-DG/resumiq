@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ATS & Job Match — Resumiq</title>
+<meta name="description" content="Compare your resume with a job description: must-have vs preferred keywords, evidence strength, experience fit and clear fixes. Free, private, explained scores.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400&family=Carlito:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/rq.css?v=2">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+</head>
+<body data-page="match">
+<section class="ph-hero"><div class="container">
+  <span class="eyebrow">🎯 ATS & Job Match</span>
+  <h1>Match your resume to the job, <span class="grad-text">honestly</span></h1>
+  <p>Paste a job description. Resumiq separates must-have from preferred requirements, checks where your resume actually proves each one, and tells you what to fix without stuffing keywords.</p>
+</div></section>
+<main class="container" style="padding-bottom:90px">
+  <div class="jm-grid">
+    <div class="card card-pad">
+      <h3>1. Your resume</h3>
+      <div class="tabs" id="rs-tabs" style="margin:10px 0 14px"><button type="button" class="on" data-t="saved">Saved resume</button><button type="button" data-t="upload">Upload</button><button type="button" data-t="paste">Paste</button></div>
+      <div data-p="saved"><select class="select" id="rs-sel" aria-label="Choose a saved resume"></select><p class="help" id="rs-none" hidden>No saved resumes in this browser yet. <a href="/studio">Build one</a>, upload or paste instead.</p></div>
+      <div data-p="upload" hidden><button type="button" class="btn btn-ghost" id="rs-file-b" style="width:100%;padding:22px">📄 Choose a PDF or Word file</button><input type="file" id="rs-file" accept=".pdf,.docx,.txt" hidden><p class="help" id="rs-file-n">Read in your browser. Nothing is uploaded until you use AI.</p></div>
+      <div data-p="paste" hidden><textarea class="textarea" id="rs-txt" rows="9" placeholder="Paste your resume text"></textarea></div>
+    </div>
+    <div class="card card-pad">
+      <h3>2. Job description</h3>
+      <div class="row" style="margin-top:10px"><div><label class="f" for="jd-title">Job title</label><input class="input" id="jd-title" placeholder="Data Analyst"></div><div><label class="f" for="jd-co">Company (optional)</label><input class="input" id="jd-co" placeholder="Company"></div></div>
+      <label class="f" for="jd-txt">Paste the full job description</label><textarea class="textarea" id="jd-txt" rows="9" placeholder="Paste responsibilities, requirements and nice-to-haves…"></textarea>
+      <div class="help" id="jd-n"></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;margin:18px 0;flex-wrap:wrap"><button class="btn btn-primary" id="go">Analyze match</button><span class="err" id="go-err" style="margin:0"></span></div>
+  <div id="out"></div>
+  <div class="card card-pad" id="hist-card" style="margin-top:22px" hidden><h3>Recent analyses</h3><div id="hist"></div></div>
+</main>
+<script src="/assets/js/core.js?v=2"></script>
+<script src="/assets/js/roles.js?v=2"></script>
+<script src="/assets/js/resume.js?v=2"></script>
+<script src="/assets/js/jd.js?v=2"></script>
+<script src="/assets/js/importer.js?v=2"></script>
+<script src="/assets/js/jobmatch.js?v=2"></script>
+<script src="/assets/js/dexa.js?v=2" defer></script>
+</body>
+</html>

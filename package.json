@@ -1,0 +1,1 @@
+{ "name": "resumiq", "version": "2.0.0", "private": true, "description": "Resumiq: free AI resume builder & career copilot with Dexa", "engines": { "node": ">=18" } }
