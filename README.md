@@ -1,6 +1,6 @@
 # Resumiq 2.0 — AI Resume Builder & Career Copilot (with Dexa)
 
-Free site by Mahendra Singh · https://resumiq.vercel.app · part of [CrackAnalytics](https://www.crackanalytics.com/)
+Free site by Mahendra Singh · https://resumiq-pekm.vercel.app · part of [CrackAnalytics](https://www.crackanalytics.com/)
 
 ## What's inside
 | Page | What it does |
@@ -18,7 +18,7 @@ Dexa (the owl, bottom-right on every page) is the AI chat. Without an AI key eve
 ## Deploy on Vercel (5 minutes)
 1. Upload this folder to the GitHub repo `resumiq` (replace old files) → Vercel redeploys.
 2. **Supabase → SQL Editor** → paste `supabase.sql` → Run (once).
-3. **Supabase → Authentication → URL Configuration**: Site URL `https://resumiq.vercel.app`, and add `https://resumiq.vercel.app/app` to Redirect URLs. (Google sign-in: enable the Google provider there.)
+3. **Supabase → Authentication → URL Configuration**: Site URL `https://resumiq-pekm.vercel.app`, and add `https://resumiq-pekm.vercel.app/app` to Redirect URLs. (Google sign-in: enable the Google provider there.)
 4. **Vercel → Project → Settings → Environment Variables** (Production), then Redeploy:
 
 | Name | Value | Needed? |

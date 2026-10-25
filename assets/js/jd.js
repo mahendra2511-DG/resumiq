@@ -84,7 +84,7 @@
     return { strong: strong.join("\n"), cert: t, weak: weak.join("\n"), years: yearsFromText(t) };
   }
   function yearsFromResume(r) {
-    const now = new Date(), ym = (v) => { const m = /^(\d{4})-(\d{2})/.exec(v || ""); return m ? +m[1] * 12 + (+m[2] - 1) : null; };
+    const now = new Date(), ym = (v) => { const m = /^(\d{4})(?:-(\d{2}))?/.exec(v || ""); return m ? +m[1] * 12 + (m[2] ? +m[2] - 1 : 0) : null; };
     const iv = r.experience.filter(e => e.start && !/intern/i.test(e.role || "")).map(e => [ym(e.start), e.current || !e.end ? now.getFullYear() * 12 + now.getMonth() : ym(e.end)]).filter(x => x[0] != null && x[1] != null && x[1] >= x[0]).sort((a, b) => a[0] - b[0]);
     let tot = 0, cs = null, ce = null; iv.forEach(([s, e]) => { if (cs == null) { cs = s; ce = e; } else if (s <= ce) ce = Math.max(ce, e); else { tot += ce - cs; cs = s; ce = e; } }); if (cs != null) tot += ce - cs;
     return iv.length ? Math.round(tot / 12 * 10) / 10 : null;

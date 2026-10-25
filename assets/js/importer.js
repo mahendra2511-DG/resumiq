@@ -43,7 +43,7 @@
     r.importNote = "Parsed without AI. Please check every section: job titles, companies and dates may need to be filled in.";
     return r;
   }
-  const ym = (v) => { if (!v) return ""; v = String(v).trim(); if (/present|current|now/i.test(v)) return ""; let m = /^(\d{4})-(\d{1,2})/.exec(v); if (m) return `${m[1]}-${m[2].padStart(2, "0")}`; const MON = "jan feb mar apr may jun jul aug sep oct nov dec".split(" "); m = /([A-Za-z]{3})[a-z]*\.?\s*(\d{4})/.exec(v); if (m && MON.includes(m[1].toLowerCase())) return `${m[2]}-${String(MON.indexOf(m[1].toLowerCase()) + 1).padStart(2, "0")}`; m = /(\d{4})/.exec(v); return m ? m[1] + "-01" : ""; };
+  const ym = (v) => { if (!v) return ""; v = String(v).trim(); if (/present|current|now/i.test(v)) return ""; let m = /^(\d{4})-(\d{1,2})/.exec(v); if (m) return `${m[1]}-${m[2].padStart(2, "0")}`; const MON = "jan feb mar apr may jun jul aug sep oct nov dec".split(" "); m = /([A-Za-z]{3})[a-z]*\.?\s*(\d{4})/.exec(v); if (m && MON.includes(m[1].toLowerCase())) return `${m[2]}-${String(MON.indexOf(m[1].toLowerCase()) + 1).padStart(2, "0")}`; m = /(\d{4})/.exec(v); return m ? m[1] : ""; };
   function fromAI(j) {
     const RS = window.RQ_RESUME, r = RS.blank({ level: j.level || "early", targetRole: j.targetRole || "" }), s = (x) => String(x == null ? "" : x).trim(), arr = (x) => Array.isArray(x) ? x : [];
     const c = j.contact || {}; Object.keys(r.contact).forEach(k => { r.contact[k] = s(c[k]); });

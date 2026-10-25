@@ -172,7 +172,7 @@ label.f{display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin:
 .doc .d-sep{color:#666;margin:0 1px}.doc .d-tools{font-size:.93em;color:#333}
 .doc ul{margin:2px 0 0;padding-left:18px}.doc li{margin:1px 0;padding-left:2px}
 .doc li b,.doc .d-p b{font-weight:700;color:#000}
-.doc ul.d-list{padding-left:24px}.doc ul.d-list li .dt{float:right;font-size:.96em}
+.doc ul.d-list{padding-left:24px}.doc .d-crow{display:flex;justify-content:space-between;gap:14px;align-items:baseline}.doc .d-crow .dt{white-space:nowrap;font-size:.96em;flex:none}
 .doc .d-sks{padding-left:8px}.doc .d-sk{margin:1px 0}.doc .d-sk b{color:#000}
 .doc .ph{background:#FEF3C7;border-radius:3px}
 .doc .d-empty{color:#9CA3AF;font-style:italic}
@@ -327,3 +327,13 @@ label.f{display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin:
 .st-ic{width:20px;text-align:center;flex:none;font-size:14px}
 .ed-pager{display:flex;justify-content:space-between;gap:10px;margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
 @media (max-width:520px){.st-top .st-title{display:none}.st-top{gap:6px}}
+.mpick{display:grid;grid-template-columns:1fr 1fr;gap:6px}.mpick .select{padding-left:10px;padding-right:6px}
+.pj-box{border:1px dashed #C7C2FF;background:#FAF9FF;border-radius:12px;padding:12px;margin:10px 0}
+.pj-h{display:flex;flex-direction:column;gap:2px}
+.pj-chips{display:flex;flex-wrap:wrap;gap:6px}.pj-chips .chip{font-size:12.5px;padding:4px 10px}
+.pj-list{display:grid;gap:6px;max-height:300px;overflow:auto}
+.pj-it{display:flex;gap:8px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13.5px;cursor:pointer}
+.pj-it:hover{border-color:var(--brand2)}.pj-it input{margin-top:3px;flex:none}
+.phl{background:#FEF3C7;border-radius:4px;padding:0 3px}
+/* Studio: room under the preview so the Dexa owl never hides the end of the resume */
+.st-pv .pv-wrap{padding-bottom:150px}

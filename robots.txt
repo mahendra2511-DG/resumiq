@@ -3,4 +3,4 @@ Allow: /
 Disallow: /app
 Disallow: /admin
 Disallow: /api/
-Sitemap: https://resumiq.vercel.app/sitemap.xml
+Sitemap: https://resumiq-pekm.vercel.app/sitemap.xml

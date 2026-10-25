@@ -105,7 +105,7 @@
       if (s.type === "education") body = r.education.filter(e => e.degree || e.school).map(e => ent({ a: `<b>${esc(e.school || e.degree)}</b>`, dt: span(e.start, e.end) || e.year || "", b: e.school ? `<i>${esc(e.degree || "")}</i>` : "", loc: esc([e.score, e.location].filter(Boolean).join(" · ")), bl: lines(e.details) })).join("");
       if (s.type === "skills") body = `<div class="d-sks">${r.skills.filter(g => g.items && g.items.trim()).map(g => `<div class="d-sk">${g.name ? `<b>${esc(g.name)}:</b> ` : ""}${esc(g.items.split(",").map(x => x.trim()).filter(Boolean).join(", "))}</div>`).join("")}</div>`;
       if (s.type === "skills" && !r.skills.some(g => g.items && g.items.trim())) body = "";
-      if (s.type === "certifications") body = r.certifications.filter(x => x.name).length ? `<ul class="d-list">${r.certifications.filter(x => x.name).map(x => `<li><b>${esc(x.name)}</b>${x.issuer ? ` — ${esc(x.issuer)}` : ""}${x.date ? `<span class="dt">${esc(fmtMonth(x.date))}</span>` : ""}</li>`).join("")}</ul>` : "";
+      if (s.type === "certifications") body = r.certifications.filter(x => x.name).length ? `<ul class="d-list">${r.certifications.filter(x => x.name).map(x => `<li><span class="d-crow"><span><b>${esc(x.name)}</b>${x.issuer ? ` — ${esc(x.issuer)}` : ""}</span>${x.date ? `<span class="dt">${esc(fmtMonth(x.date))}</span>` : ""}</span></li>`).join("")}</ul>` : "";
       if (["achievements", "publications", "volunteering"].includes(s.type) && lines(r[s.type]).length) body = `<ul class="d-list">${lines(r[s.type]).map(x => `<li>${rich(x, r, true)}</li>`).join("")}</ul>`;
       if (["languages", "interests"].includes(s.type) && String(r[s.type] || "").trim()) body = `<p class="d-p">${esc(r[s.type])}</p>`;
       if (body) { any = true; out.push(`<section class="d-sec" data-sec="${s.id}"><h3>${esc(s.title)}</h3>${body}</section>`); }
@@ -137,7 +137,9 @@
   const VERBS = new Set("accelerated achieved administered advised analysed analyzed architected assessed audited automated boosted budgeted built captured championed closed coached collaborated completed conducted consolidated converted coordinated created cut decreased defined delivered deployed designed developed devised directed drafted drove edited eliminated enabled engineered established evaluated executed expanded facilitated forecasted founded generated grew guided handled hired identified implemented improved increased initiated integrated interviewed introduced investigated launched led lowered maintained managed mapped mentored migrated minimised minimized modeled modelled monitored negotiated onboarded optimised optimized orchestrated organised organized oversaw owned partnered performed pioneered planned prepared presented prioritised prioritized processed produced programmed proposed prototyped published raised ran rebuilt recovered recruited redesigned reduced refactored reconciled resolved restructured revamped reviewed saved scaled secured shipped simplified sold solved spearheaded standardised standardized steered streamlined strengthened structured supervised supported surveyed taught tested trained transformed tripled doubled trimmed tuned unified upgraded validated visualised visualized won wrote found discovered answered calculated cleaned segmented parsed indexed estimated containerised containerized added gathered documented fine wired shipped modelled queried scripted extracted merged categorised categorized forecast benchmarked translated localized localised taught onboarded".split(" "));
   const WEAK = ["responsible for", "worked on", "helped with", "helped in", "involved in", "duties included", "tasked with", "assisted in", "participated in", "was part of", "various tasks", "etc", "and so on"];
   const CLICHES = ["team player", "hard working", "hardworking", "hard-working", "go-getter", "self-motivated", "self motivated", "fast learner", "quick learner", "result-oriented", "results-oriented", "result oriented", "dynamic individual", "think outside the box", "synergy", "go getter"];
-  const PERSONAL = ["date of birth", "dob", "d.o.b", "marital status", "married", "unmarried", "father's name", "fathers name", "mother's name", "religion", "nationality", "gender", "caste", "passport no", "declaration", "i hereby declare"];
+  const PERSONAL = ["date of birth", "dob", "d.o.b", "marital status", "married", "unmarried", "father's name", "fathers name", "mother's name", "religion", "nationality", "gender", "caste", "passport no", "declaration", "i hereby declare", "references available", "references on request", "reference available"];
+  const PASSIVE = /\b(was|were|been|being|is|are|got)\s+(\w+ly\s+)?\w+(ed|en)\b/i;
+  const LEVELS_RE = /\b(beginner|intermediate|advanced level|expert level|basic knowledge|proficient)\b|\d+\s*%|★|⭐|\(\s*\d\s*\/\s*\d\s*\)/i;
   const firstWord = (l) => (String(l).replace(/\*\*/g, "").match(/^[A-Za-z]+/) || [""])[0].toLowerCase();
   function lint(l) {
     const out = [], fw = firstWord(l), n = words(l), low = " " + l.toLowerCase() + " ";
@@ -147,6 +149,7 @@
     const weak = WEAK.find(w => low.includes(" " + w + " ") || low.includes(" " + w + ".") || low.includes(" " + w + ","));
     if (weak) out.push(`Weak phrase "${weak}"`);
     if (/\b(i|my|me)\b/.test(l)) out.push("No first person");
+    if (PASSIVE.test(l)) out.push("Use active voice (say what YOU did)");
     if (/\[[^\]]+\]/.test(l)) out.push("Fill the [placeholder] with a real fact");
     else if (!/\d|%|₹|\$|\blakh|\bcrore/i.test(l)) out.push("Add a number if you have one (users, hours, %)");
     if (n > 34) out.push(`Long (${n} words)`); else if (n < 6) out.push("Too short");
@@ -172,7 +175,9 @@
     const pers = PERSONAL.filter(p => new RegExp("(^|[^a-z])" + p.replace(/[.*+?^${}()|[\]\\']/g, "\\$&") + "([^a-z]|$)", "i").test(low));
     add("ATS format", 4, pers.length ? 0 : has ? 1 : 0, pers.length ? `Personal details found: ${pers.join(", ")}` : "No personal details (DOB, photo, religion…)", "Remove DOB, marital status, religion, declaration and full address.", "contact", pers.length ? "personal" : null);
     const oddN = bl.filter(l => ODD.test(l)).length + (ODD.test(r.summary) ? 1 : 0);
-    add("ATS format", 2, oddN ? 0 : has ? 1 : 0, oddN ? `${oddN} line(s) with emojis or symbols` : "Plain characters (no emojis or icons)", "Symbols can turn into garbage in an ATS.", null, oddN ? "symbols" : null);
+    const lv = r.skills.filter(g => LEVELS_RE.test(String(g.items || "") + " " + String(g.name || ""))).length;
+    add("ATS format", 1, lv ? 0 : has ? 1 : 0, lv ? "Skill levels or ratings in Skills" : "No skill ratings (stars, %, levels)", "Remove levels like “Expert / 80%”: list your strongest skills first instead.", "skills");
+    add("ATS format", 1, oddN ? 0 : has ? 1 : 0, oddN ? `${oddN} line(s) with emojis or symbols` : "Plain characters (no emojis or icons)", "Symbols can turn into garbage in an ATS.", null, oddN ? "symbols" : null);
     const lim = L.pages; add("ATS format", 3, !has ? 0 : pages <= lim ? 1 : pages === lim + 1 ? .4 : 0, `Length: ${pages} page${pages > 1 ? "s" : ""} (target ${lim})`, "Use “Fit to page” in the preview, or trim older bullets.", null, pages > lim ? "fit" : null);
     // 2) Keywords (25): does it match the role?
     const g = window.RQ_ROLES.guide(r.targetRole), core = (g.skills || []).slice(0, 12), hit = core.filter(k => window.RQ_JD ? window.RQ_JD.has(ft, k) : low.includes(k.toLowerCase()));
@@ -188,8 +193,8 @@
     const numOk = bl.filter(l => /\d|%|₹|\$/.test(l.replace(/[~₹$]?\[[^\]]*\][%+]?/g, ""))).length, need = early ? .4 : .5;
     add("Impact", 7, nb ? verbOk / nb / .85 : 0, `Action verbs (${verbOk}/${nb})`, "Start bullets with Built, Led, Automated, Reduced…", main, nb && verbOk < nb ? "verbs" : null);
     add("Impact", 9, nb ? numOk / nb / need : 0, `Measurable results (${numOk}/${nb} bullets)`, `Aim for ${Math.round(need * 100)}%+ of bullets with a real number (users, %, hours, ₹).`, main);
-    const weakN = bl.filter(l => WEAK.some(w => (" " + l.toLowerCase() + " ").includes(" " + w))).length;
-    add("Impact", 3, nb ? 1 - weakN / Math.max(2, nb / 2) : 0, "No weak phrases", "Replace “responsible for / worked on” with what you achieved.", main, weakN ? "verbs" : null);
+    const weakN = bl.filter(l => PASSIVE.test(l) || WEAK.some(w => (" " + l.toLowerCase() + " ").includes(" " + w))).length;
+    add("Impact", 3, nb ? 1 - weakN / Math.max(2, nb / 2) : 0, "No weak phrases or passive voice", "Replace “responsible for / worked on / was handled by” with what you did.", main, weakN ? "verbs" : null);
     const lenBad = bl.filter(l => words(l) > 34 || words(l) < 6).length;
     add("Impact", 3, nb ? 1 - lenBad / nb : 0, "Scannable bullets (6–34 words)", "One idea per bullet.", main);
     const phN = (ft.match(/\[[^\]]+\]/g) || []).length, cl = CLICHES.filter(v => low.includes(v));

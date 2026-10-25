@@ -44,9 +44,10 @@
     const pus = [...b.querySelectorAll(".dx-pu")];
     let tx = null, ty = null, raf = 0;
     const look = () => { raf = 0;
+      const flip = /matrix\(-1/.test(getComputedStyle(b).transform || "");
       pus.forEach(g => { const svg = g.ownerSVGElement, r = svg.getBoundingClientRect(); if (!r.width) return;
-        const vb = svg.viewBox.baseVal, sc = r.width / vb.width, c = g.getBBox(), ex = r.left + (c.x + c.width / 2 - vb.x) * sc, ey = r.top + (c.y + c.height / 2 - vb.y) * sc;
-        let dx = 0, dy = 0; if (tx != null) { const vx = tx - ex, vy = ty - ey, d = Math.hypot(vx, vy) || 1, m = Math.min(4.2, d / 40); dx = vx / d * m; dy = vy / d * m; }
+        const vb = svg.viewBox.baseVal, sc = r.width / vb.width, c = g.getBBox(), off = (c.x + c.width / 2 - vb.x) * sc, ex = flip ? r.right - off : r.left + off, ey = r.top + (c.y + c.height / 2 - vb.y) * sc;
+        let dx = 0, dy = 0; if (tx != null) { const vx = tx - ex, vy = ty - ey, d = Math.hypot(vx, vy) || 1, m = Math.min(4.2, d / 40); dx = vx / d * m * (flip ? -1 : 1); dy = vy / d * m; }
         g.setAttribute("transform", `translate(${dx.toFixed(2)} ${dy.toFixed(2)})`); }); };
     const aim = (x, y) => { tx = x; ty = y; if (!raf) raf = requestAnimationFrame(look); };
     if (!still) {
