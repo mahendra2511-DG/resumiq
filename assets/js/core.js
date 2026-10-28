@@ -131,7 +131,9 @@
       if (error) { cloudErr = error.message; rows.forEach(r => pending.set(r.id, r)); }
     }, 900);
     return {
-      list(kind) { return docs.filter(d => !d.deleted && (!kind || d.kind === kind)).sort((a, b) => String(b.updated).localeCompare(String(a.updated))); },
+      // Copilot items are stored as kind "analysis" with data.cp = "fit" | "profile" | "story" | … (fits the existing cloud table); list("cp:fit") returns them, every other list skips them
+      list(kind) { const cp = /^cp:/.test(kind || "") ? kind.slice(3) : null; return docs.filter(d => !d.deleted && (cp ? d.data && d.data.cp === cp : (!kind || d.kind === kind) && !(d.data && d.data.cp))).sort((a, b) => String(b.updated).localeCompare(String(a.updated))); },
+      all() { return docs.filter(d => !d.deleted); },
       get(id) { return docs.find(d => d.id === id && !d.deleted) || null; },
       save(doc) { doc = Object.assign({}, doc); if (!doc.id) delete doc.id; const now = new Date().toISOString(); let d = doc.id && docs.find(x => x.id === doc.id);
         if (!d) { d = Object.assign({ id: uid(), created: now }, doc); docs.push(d); } else Object.assign(d, doc);
@@ -153,7 +155,7 @@
         docs.filter(d => !cloudIds.has(d.id) || String(d.updated) > String(((data || []).find(r => r.id === d.id) || {}).updated_at || "")).forEach(d => pending.set(d.id, d));
         persist(); push();
       },
-      exportAll() { return JSON.stringify({ app: "Resumiq", exported: new Date().toISOString(), docs: this.list() }, null, 1); },
+      exportAll() { return JSON.stringify({ app: "Resumiq", exported: new Date().toISOString(), docs: this.all() }, null, 1); },
       async wipe() { const ids = docs.map(d => d.id); docs = []; persist(); if (cloud && ids.length) await sb.from("rq_docs").delete().in("id", ids); },
     };
   })();
@@ -179,7 +181,7 @@
   function renderCredits() { $$("[data-ai-left]").forEach(el => { el.textContent = aiLeft == null ? "" : `${aiLeft} AI credit${aiLeft === 1 ? "" : "s"} left today`; }); }
 
   /* ---------- header / footer ---------- */
-  const PRODUCTS = [["/studio", "✍️", "Resume Studio", "Build and edit with live preview"], ["/job-match", "🎯", "ATS & Job Match", "Compare a resume with a job description"], ["/app#/cover-letter", "✉️", "Cover Letter Studio", "Tailored, truthful cover letters"], ["/app#/linkedin", "💼", "LinkedIn Optimizer", "Headline, About and skills"], ["/app#/interview", "🎤", "Interview Prep", "Questions from your resume + JD"], ["/app#/applications", "📋", "Application Tracker", "Track every application"], ["/app#/jobs", "🔎", "Job Finder", "Search Naukri, LinkedIn, Internshala"]];
+  const PRODUCTS = [["/studio", "✍️", "Resume Studio", "Build and edit with live preview"], ["/job-match", "🎯", "ATS & Job Match", "Compare a resume with a job description"], ["/app#/cover-letter", "✉️", "Cover Letter Studio", "Tailored, truthful cover letters"], ["/app#/linkedin", "💼", "LinkedIn Optimizer", "Headline, About and skills"], ["/app#/interview", "🎤", "Interview Prep", "Questions from your resume + JD"], ["/app#/applications", "📋", "Application Tracker", "Track every application"], ["/app#/jobs", "🔎", "Job Finder", "Search Naukri, LinkedIn, Internshala"], ["/app#/fit", "🧭", "Job Search Copilot", "Fit check, Apply kit, mock interviews, follow-ups"]];
   function header() {
     const page = document.body.dataset.page || "";
     const h = document.createElement("header"); h.className = "rq-nav";

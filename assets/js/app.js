@@ -3,8 +3,8 @@
   "use strict";
   const { $, $$, esc, toast, modal, closeModal, store, rel, fmtDay } = window.RQ; const RS = window.RQ_RESUME, RR = window.RQ_ROLES;
   const view = $("#view");
-  const STATUSES = ["Saved", "Ready to Apply", "Applied", "Assessment", "Interview", "Offer", "Rejected", "Withdrawn"];
-  const STC = { Saved: "", "Ready to Apply": "info", Applied: "brand", Assessment: "warn", Interview: "warn", Offer: "ok", Rejected: "bad", Withdrawn: "" };
+  const STATUSES = ["Saved", "Ready to Apply", "Applied", "Assessment", "Interview", "Offer", "Hired", "Rejected", "No response", "Withdrawn"];
+  const STC = { Saved: "", "Ready to Apply": "info", Applied: "brand", Assessment: "warn", Interview: "warn", Offer: "ok", Hired: "ok", Rejected: "bad", "No response": "", Withdrawn: "" };
   const today = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
   const resumes = () => store.list("resume"), analyses = () => store.list("analysis");
   const scoreOf = (d) => { try { const r = RS.normalize(d.data); return RS.quality(r, 1).score; } catch (e) { return null; } };
@@ -26,7 +26,7 @@
   /* ---------- dashboard ---------- */
   function dashboard() {
     const rs = resumes(), an = analyses(), ap = store.list("application"), u = window.RQ.user;
-    const due = ap.filter(a => a.data.followUp && a.data.followUp <= today() && !["Offer", "Rejected", "Withdrawn"].includes(a.data.status));
+    const due = ap.filter(a => a.data.followUp && a.data.followUp <= today() && !["Offer", "Hired", "Rejected", "No response", "Withdrawn"].includes(a.data.status));
     const cnt = STATUSES.map(s => [s, ap.filter(a => a.data.status === s).length]).filter(x => x[1]);
     view.innerHTML = head(`Hi${u ? " " + esc(window.RQ.displayName().split(" ")[0]) : ""} 👋`, "Pick up where you left off. Everything here is saved " + (store.cloud ? "to your account." : "in this browser" + (u ? "." : " — sign in to keep a cloud copy.")), `<span class="badge brand" data-ai-left></span>`) + `
       <div class="grid g4">${[["/studio", "✍️", "Build a resume", "Guided editor with live preview"], ["/job-match", "🎯", "Match a job", "Must-haves, gaps and fixes"], ["#/cover-letter", "✉️", "Cover letter", "Tailored to the job"], ["#/interview", "🎤", "Interview prep", "Questions + answer feedback"]].map(([h, i, t, d]) => `<a class="feature card" href="${h}" style="text-decoration:none;padding:18px"><div class="fi">${i}</div><h3 style="margin:8px 0 2px">${t}</h3><p class="muted small" style="margin:0">${d}</p></a>`).join("")}</div>
@@ -42,6 +42,7 @@
         <div class="card card-pad"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">Applications</h3><a href="#/applications" class="small">Tracker →</a></div>${cnt.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">${cnt.map(([s, n]) => `<span class="badge ${STC[s]}">${esc(s)}: ${n}</span>`).join("")}</div>` : `<p class="muted small" style="margin-top:8px">Track every application, its status and when to follow up.</p><a class="btn btn-soft btn-sm" href="#/applications">Add an application</a>`}</div>
         <div class="card card-pad"><h3 style="margin:0 0 6px">Follow-ups due</h3>${due.length ? due.map(a => `<div class="chk"><div class="tx"><b>${esc(a.title)}</b><span>Follow up ${esc(fmtDay(a.data.followUp))} · ${esc(a.data.status)}</span></div><a class="btn btn-ghost btn-sm" href="#/applications">Open</a></div>`).join("") : `<p class="muted small">Nothing due. Set a follow-up date on an application and it shows up here.</p>`}</div>
       </div>
+      ${window.RQ_COPILOT ? window.RQ_COPILOT.dashCard() : ""}
       <div class="card card-pad" style="margin-top:18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap"><img src="/assets/img/dexa-avatar.svg" alt="" width="44" height="44"><div style="flex:1;min-width:220px"><b>Ask Dexa anything about your job search</b><div class="small muted">Resumes, job descriptions, interviews, LinkedIn. Dexa uses only your real experience.</div></div><button class="btn btn-ai" onclick="RQ.dexa.toggle(true)">🦉 Ask Dexa</button></div>`;
     window.RQ.renderCredits();
   }
@@ -188,8 +189,10 @@
   }
 
   /* ---------- router ---------- */
-  const ROUTES = { dashboard, resumes: resumesView, "cover-letter": coverView, linkedin: linkedinView, interview: interviewView, applications: applicationsView, jobs: jobsView, settings: settingsView };
-  const TITLES = { dashboard: "Dashboard", resumes: "Resumes", "cover-letter": "Cover letters", linkedin: "LinkedIn", interview: "Interview prep", applications: "Applications", jobs: "Find jobs", settings: "Settings" };
+  const ROUTES = Object.assign({ dashboard, resumes: resumesView, "cover-letter": coverView, linkedin: linkedinView, interview: interviewView, applications: applicationsView, jobs: jobsView, settings: settingsView }, window.RQ_EXTRA_ROUTES || {});
+  const TITLES = Object.assign({ dashboard: "Dashboard", resumes: "Resumes", "cover-letter": "Cover letters", linkedin: "LinkedIn", interview: "Interview prep", applications: "Applications", jobs: "Find jobs", settings: "Settings" }, window.RQ_EXTRA_TITLES || {});
+  // helpers shared with the Job Search Copilot pages (copilot.js)
+  window.RQ_APP = { view, head, empty, busy, copy, download, hl, today, resumes, analyses, resumeSel, resumeText, resumeObj, jobPicker, wireJob, jobVal, qp, STATUSES, STC, apEdit, route: () => route() };
   function route() {
     const r = (location.hash.replace(/^#\/?/, "").split("?")[0]) || "dashboard", f = ROUTES[r] || dashboard;
     $$("#side a[data-r]").forEach(a => a.classList.toggle("on", a.dataset.r === r)); document.title = (TITLES[r] || "Dashboard") + " — Resumiq";

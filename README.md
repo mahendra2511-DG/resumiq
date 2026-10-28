@@ -9,6 +9,7 @@ Free site by Mahendra Singh · https://resumiq-pekm.vercel.app · part of [Crack
 | `/studio` | Resume Studio: sections, guided editor, bullet checks, Dexa AI actions, live A4 preview, quality score, role guide, job tailoring, PDF and Word download, versions, undo |
 | `/job-match` | ATS & Job Match: must-have vs preferred, evidence strength, explained score, "I have this / I don't", Dexa deep read, tailor a copy |
 | `/app` | Workspace: dashboard, resumes, cover letters, LinkedIn, interview prep, application tracker, find jobs, settings |
+| `/app#/profile` … `/app#/screening` | **Job Search Copilot** (new): Career profile · Fit check (hard gates: location, language, notice period, your deal-breakers; then Technical 30 / Experience 25 / Work-style 15 / Career 30) · Rank many jobs with deadlines · Apply kit (Dexa drafts → a second Dexa pass reviews: unsupported claims, interview backtrack test, style lint, keyword coverage → saves tailored resume + letter + tracker) · STAR story bank with coverage map · Mock interview (6 staged questions, voice answers, STAR feedback, summary) · Follow-ups & outcomes (funnel, quiet/stale sweeps, follow-up drafts, lessons) · Upskill heatmap + learning plan · Application-form answers with exact counts and a .txt pack |
 | `/samples` | 8 ready ATS resume samples (Data Analyst fresher/experienced, BA, Data Scientist, AI Engineer, Power BI, Data Engineer, Software Engineer) |
 | `/templates`, `/career-roles`, `/resume-guide` | Templates gallery, 120+ role guides, writing guide |
 | `/admin` | Owner-only stats (sign in as mahendraa1188@gmail.com) |
@@ -34,6 +35,10 @@ Keys live only in Vercel. Never put them in the code or send them to anyone.
 
 ## ATS score
 Every resume gets an ATS score out of 100 with visible weights: ATS format 25, Keywords 25, Impact 30, Completeness 20. Formatting issues have one-click auto-fix; "Boost with Dexa" rewrites weak bullets; "Fit to page" tightens spacing; the PDF breaks pages exactly like the preview.
+
+## Job Search Copilot: credits
+Rule-based parts are free and instant (fit score, gates, ranking, style lint, funnel, heatmap). AI parts use 1 credit each: profile fill, deep fit read, draft (2: tailor + letter), reviewer pass, stories, mock questions, each answer feedback, follow-up draft, learning plan, form answers. Workflow ideas adapted from the open-source *ai-job-search* framework (MIT licence).
+Copilot data is stored as `analysis` documents tagged with `data.cp`, so it syncs to the existing `rq_docs` table: **no SQL change needed**.
 
 ## Notes
 - Free plan: the old Razorpay/paid activation was removed (it could be unlocked from the browser). AI credits are now counted on the server.
