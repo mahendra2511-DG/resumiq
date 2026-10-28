@@ -150,7 +150,7 @@
     const byCh = {}; sent.forEach(a => { const c = a.data.channel || "Not recorded"; const x = byCh[c] = byCh[c] || [0, 0]; x[0]++; if (reached(a, "int")) x[1]++; });
     const lessons = all.filter(a => a.data.outcome && (a.data.outcome.feedback || a.data.outcome.differently || a.data.outcome.valued));
     A().view.innerHTML = C.page("outcomes", "Follow-ups & outcomes", "Chase quiet applications politely, close the dead ones, and learn from every result: which jobs actually get you interviews.") + `
-      <div class="card card-pad"><h3>Your funnel</h3><div class="cp-funnel">${F.map(([t, n], i) => `<div><b>${n}</b><small>${t}</small>${i ? `<small>${pct(n, F[i - 1][1])} of previous</small>` : ""}</div>`).join("")}</div>
+      <div class="card card-pad"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h3 style="margin:0">Your funnel</h3><button class="btn btn-ghost btn-sm" id="oc-html-report">⬇ Offline HTML report</button></div><div class="cp-funnel">${F.map(([t, n], i) => `<div><b>${n}</b><small>${t}</small>${i ? `<small>${pct(n, F[i - 1][1])} of previous</small>` : ""}</div>`).join("")}</div>
         ${sent.length < 5 ? `<p class="small muted" style="margin-top:10px">Patterns become useful after about 5–10 sent applications. Keep logging results with <b>Record result</b>.</p>` : `<p style="margin:12px 0 0">${pct(F[2][1], F[0][1])} of your applications reach an interview.${avgF(fi) != null && avgF(fn) != null ? ` Jobs that gave you interviews had an average fit of <b>${avgF(fi)}</b>, the others <b>${avgF(fn)}</b>. ${avgF(fi) - avgF(fn) >= 8 ? "Your fit score predicts your results: spend your time on jobs above " + Math.max(55, avgF(fi) - 8) + "." : "Fit isn't separating them yet; check your resume and how you apply."}` : ""}</p>`}
         ${Object.keys(byCh).length > 1 ? `<div class="tbl-wrap" style="margin-top:10px"><table class="cp-tb"><thead><tr><th>Channel</th><th>Sent</th><th>Interviews</th><th>Rate</th></tr></thead><tbody>${Object.entries(byCh).sort((a, b) => b[1][0] - a[1][0]).map(([c, x]) => `<tr><td>${esc(c)}</td><td>${x[0]}</td><td>${x[1]}</td><td>${pct(x[1], x[0])}</td></tr>`).join("")}</tbody></table></div>` : ""}</div>
       <div class="grid g2" style="margin-top:16px;align-items:start"><div class="card card-pad"><h3>⏳ Gone quiet (10+ days)</h3>${quiet.length ? quiet.map(a => `<div class="chk"><div class="tx"><b>${esc(a.title)}</b><span>${quietDays(a.data)} days quiet · ${(a.data.followups || []).length} follow-up${(a.data.followups || []).length === 1 ? "" : "s"} sent</span></div><button class="btn btn-primary btn-sm" data-fu="${esc(a.id)}">Follow up</button></div>`).join("") : `<p class="small muted">Nothing to chase. Applications show up here 10 days after you apply (or after your last follow-up).</p>`}
@@ -161,6 +161,23 @@
     $$("[data-fu]").forEach(b => b.onclick = () => followModal(store.get(b.dataset.fu)));
     $$("[data-oc]").forEach(b => b.onclick = () => outcomeModal(store.get(b.dataset.oc)));
     const sw = $("#sw-go"); if (sw) sw.onclick = () => { let n = 0; $$("[data-sw]:checked").forEach(c => { const a = store.get(c.dataset.sw); a.data.status = "No response"; a.data.outcome = Object.assign({ stages: [], date: A().today() }, a.data.outcome || {}); store.save({ id: a.id, kind: "application", title: a.title, data: a.data }); n++; }); toast(n + " closed as No response", "ok"); outcomesView(); };
+    const reportBtn = $("#oc-html-report");
+    if (reportBtn) reportBtn.onclick = () => {
+      const rows = all.map(a => {
+        const d = a.data || {};
+        return { title: d.role || a.title || "", company: d.company || "", status: d.status || "", applied: d.applied || "", channel: d.channel || "", fit: d.fit != null ? d.fit : "", location: d.location || "", notes: (d.notes || "").slice(0, 200), outcome: d.outcome ? JSON.stringify(d.outcome).slice(0, 150) : "" };
+      });
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Resumiq Application Report</title>
+<style>body{font-family:system-ui,sans-serif;max-width:960px;margin:24px auto;padding:0 16px;color:#111}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}th{background:#f4f4f5}h1{font-size:1.4rem}.muted{color:#666;font-size:12px}.funnel{display:flex;gap:12px;margin:16px 0}.funnel div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;text-align:center}</style></head>
+<body><h1>Resumiq — Application Analytics (offline)</h1>
+<p class="muted">Generated ${new Date().toISOString().slice(0,16).replace("T"," ")} · ${all.length} applications · data stays in this file only</p>
+<div class="funnel">${F.map(([t,n])=>`<div><b>${n}</b><br><small>${t}</small></div>`).join("")}</div>
+<table><thead><tr><th>Role</th><th>Company</th><th>Status</th><th>Applied</th><th>Channel</th><th>Fit</th><th>Location</th><th>Notes</th></tr></thead>
+<tbody>${rows.map(r=>`<tr><td>${esc(r.title)}</td><td>${esc(r.company)}</td><td>${esc(r.status)}</td><td>${esc(r.applied)}</td><td>${esc(r.channel)}</td><td>${esc(String(r.fit))}</td><td>${esc(r.location)}</td><td>${esc(r.notes)}</td></tr>`).join("")}</tbody></table>
+<p class="muted" style="margin-top:24px">This report contains only the application data you chose to export. No tokens or account secrets are included.</p></body></html>`;
+      A().download(new Blob([html], { type: "text/html;charset=utf-8" }), "resumiq-application-report-" + A().today() + ".html");
+      toast("Offline HTML report downloaded.", "ok");
+    };
   }
 
   /* =========================== 8. Upskill plan =========================== */

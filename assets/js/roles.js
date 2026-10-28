@@ -222,6 +222,7 @@
     { id: "modern", name: "Modern", desc: "Left-aligned name and an accent bar on headings.", best: "Most roles", acc: "#3B2DB8" },
     { id: "executive", name: "Executive", desc: "Generous spacing, serif, centered header.", best: "Managers and leaders", acc: "#1E3A8A" },
     { id: "compact", name: "Compact", desc: "Tight spacing to fit a lot on one page.", best: "Dense experience, freshers with many projects", acc: "#111827" },
+    { id: "tech", name: "Tech Clean", desc: "Minimal header, strong section labels, high readability for engineering and product roles.", best: "Software, data, product, design", acc: "#0F766E" },
   ];
   const LEVELS = [
     { id: "student", t: "Student / Fresher", pages: 1, order: ["summary", "skills", "projects", "experience", "education", "certifications", "achievements", "languages", "volunteering"], tip: "One page. Projects and internships are your experience: show tools, links and results." },

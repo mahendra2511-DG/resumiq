@@ -188,6 +188,7 @@ label.f{display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin:
 .t-modern{font-family:Inter,Arial,sans-serif;font-size:12.9px}.t-modern .d-top{text-align:left}.t-modern .d-contact{justify-content:flex-start}.t-modern .d-name{color:var(--acc);font-weight:700;font-size:29px}.t-modern .d-title{color:#374151}.t-modern .d-sec h3{border:0;border-left:3px solid var(--acc);padding:0 0 0 8px;font-variant:normal;letter-spacing:0;font-size:14.5px;font-weight:700;color:var(--acc)}.t-modern .d-ent,.t-modern .d-sks{padding-left:11px}
 .t-executive{padding:54px 62px}.t-executive .d-name{font-size:32px;letter-spacing:.06em;text-transform:uppercase;font-weight:500}.t-executive .d-sec h3{text-align:center;border-bottom:0;border-top:1px solid #9CA3AF;padding-top:5px;color:var(--acc)}
 .t-compact{font-family:Calibri,Carlito,'Segoe UI',Lato,Inter,Arial,sans-serif;font-size:12.4px;line-height:1.28;padding:30px 38px}.t-compact .d-name{font-size:25px;font-weight:700}.t-compact .d-sec{margin-top:6px}.t-compact .d-ent{margin-bottom:3px}.t-compact .d-sec h3{font-variant:normal;font-weight:700;font-size:13.5px;text-transform:uppercase;letter-spacing:.06em}
+.t-tech{font-family:Inter,'Segoe UI',Arial,sans-serif;font-size:12.8px}.t-tech .d-top{text-align:left}.t-tech .d-contact{justify-content:flex-start}.t-tech .d-name{font-weight:700;font-size:28px;color:var(--acc)}.t-tech .d-title{color:#334155;font-weight:500}.t-tech .d-sec h3{border:0;border-bottom:2px solid var(--acc);padding:0 0 4px;font-variant:normal;letter-spacing:.02em;font-size:13px;font-weight:700;text-transform:uppercase;color:var(--acc)}.t-tech .d-r1 .dt{font-weight:600}
 
 /* Dexa chat panel */
 .dx-panel{position:fixed;right:18px;bottom:150px;z-index:120;width:380px;max-width:calc(100vw - 24px);height:min(560px,72vh);background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh-lg);display:none;flex-direction:column;overflow:hidden}
@@ -342,3 +343,13 @@ label.f{display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin:
 @media (max-width:1100px){.adm-kpi{grid-template-columns:repeat(3,minmax(0,1fr))}}@media (max-width:640px){.adm-kpi{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .adm-row{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 44px;gap:10px;align-items:center;font-size:13.5px;margin:7px 0}.adm-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.adm-row b{text-align:right}
 .adm-chart{width:100%;height:auto;display:block;margin-top:8px}
+
+/* ===== Job Agent ===== */
+.ja-hero{background:linear-gradient(135deg,#4c1d95 0%,#5B4BF0 45%,#7c3aed 100%);border-radius:18px;padding:28px 24px 8px;margin-bottom:4px;box-shadow:0 12px 40px rgba(91,75,240,.25)}
+.ja-hero-inner{max-width:920px}
+.ja-search-card{background:#fff;border-radius:14px;padding:18px 18px 16px;margin-top:18px;box-shadow:0 8px 28px rgba(15,23,42,.12);border:1px solid rgba(255,255,255,.5)}
+#gj-sources .ja-group{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+#gj-sources .ja-group-title{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mute);margin-bottom:10px}
+#gj-sources .ja-portal{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:13.5px;font-weight:600;color:var(--ink2);text-decoration:none!important;transition:border-color .15s,background .15s,transform .1s}
+#gj-sources .ja-portal:hover{border-color:var(--brand2);background:var(--brand-soft);color:var(--brand-ink);transform:translateY(-1px)}
+@media (max-width:640px){.ja-hero{padding:20px 14px 6px}.ja-search-card{padding:14px}}
