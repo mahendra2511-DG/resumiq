@@ -18,6 +18,7 @@ module.exports = async (req,res) => {
     const params = new URLSearchParams({app_id:id,app_key:key,results_per_page:"20",what:query,"content-type":"application/json",sort_by:"date"});
     if (location) params.set("where",location);
     if (b.remote) params.set("what_or","remote work from home");
+    if (b.fresher) { params.set("what_exclude","senior sr lead principal manager head director architect staff"); params.set("max_days_old","45"); }
     const url = `https://api.adzuna.com/v1/api/jobs/${country}/search/1?${params.toString()}`;
     const response = await fetch(url,{headers:{Accept:"application/json"},signal:AbortSignal.timeout(12000)});
     if (!response.ok) { await L.bump(usageKey,limit,-1); return L.send(res,response.status===429?429:502,{ok:false,message:response.status===401||response.status===403?"Adzuna rejected the API credentials. Check ADZUNA_APP_ID and ADZUNA_APP_KEY.":"The live job provider is temporarily unavailable. Try the job-board links."}); }
@@ -27,7 +28,7 @@ module.exports = async (req,res) => {
       location:clean(j.location&&j.location.display_name,180), url:/^https?:\/\//i.test(String(j.redirect_url||""))?String(j.redirect_url):"",
       description:clean(j.description,1800), posted:clean(j.created,40), salaryMin:Number.isFinite(+j.salary_min)&&j.salary_min!=null?+j.salary_min:null,
       salaryMax:Number.isFinite(+j.salary_max)&&j.salary_max!=null?+j.salary_max:null, salaryCurrency:country==="gb"?"GBP":country==="us"?"USD":country==="in"?"INR":country==="ca"?"CAD":country==="au"?"AUD":""
-    })).filter(j=>j.title&&j.url);
+    })).filter(j=>j.title&&j.url&&(!b.fresher||!/\b(senior|sr\.?|lead|principal|manager|head|director|architect|staff|[5-9]\+? ?years?|1[0-9] ?years?)\b/i.test(j.title)));
     await L.logEvent(req,{kind:"job_search",detail:country,page:"global-jobs",uid:user?user.id:null,email:user?user.email:null});
     return L.send(res,200,{ok:true,provider:"Adzuna",count:Number(data.count)||jobs.length,jobs,attribution:{label:"Jobs by Adzuna",url:country==="gb"?"https://www.adzuna.co.uk/":country==="in"?"https://www.adzuna.in/":"https://www.adzuna.com/"}});
   } catch(e) { await L.bump(usageKey,limit,-1); return L.send(res,502,{ok:false,message:"Could not reach the live job provider. Please try again."}); }

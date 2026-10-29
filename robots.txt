@@ -2,5 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /app
 Disallow: /admin
+Disallow: /portfolio
 Disallow: /api/
 Sitemap: https://resumiq-pekm.vercel.app/sitemap.xml

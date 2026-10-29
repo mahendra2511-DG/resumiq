@@ -38,6 +38,11 @@ async function stats() {
   docs.forEach(d => { const u = byU[d.user_id]; if (!u) return; if (d.kind === "resume") { u.resumes++; if (d.target) u.roles.add(d.target); } if (d.updated_at && (!u.last || d.updated_at > u.last)) u.last = d.updated_at; });
   ev.forEach(e => { const u = e.uid && byU[e.uid]; if (!u) return; if (!u.last || e.ts > u.last) u.last = e.ts; if (e.kind === "ai") u.ai++; if (e.kind === "download_pdf") u.pdf++; if (e.kind === "download_docx") u.docx++; if (e.kind === "visit") u.visits++; });
   out.users = Object.values(byU).map(u => Object.assign(u, { roles: [...u.roles].slice(0, 4) })).sort((a, b) => String(b.last || "").localeCompare(String(a.last || "")));
+  // course batches: students who added a batch code share a progress summary (cp 'batch'); never resume text
+  try { const B = await rest("rq_docs?select=user_id,updated_at,data&kind=eq.analysis&data->>cp=eq.batch&limit=5000"); const g = {};
+    B.forEach(r => { const d = r.data || {}, code = String(d.code || "").toUpperCase().slice(0, 20); if (!code) return; const u = byU[r.user_id] || {}; (g[code] = g[code] || []).push(Object.assign({ name: u.name || d.name || "", email: u.email || "", updated: r.updated_at }, d.s || {})); });
+    out.batches = Object.entries(g).map(([code, st]) => ({ code, students: st.sort((a, b) => (b.resumeScore || 0) - (a.resumeScore || 0)) })).sort((a, b) => b.students.length - a.students.length);
+  } catch (e) { out.batches = []; }
   out.recent = ev.slice(0, 80).map(e => ({ ts: e.ts, who: e.email || (e.vid ? "Guest " + e.vid.slice(0, 6) : "Guest"), kind: e.kind, what: e.detail || e.page || "", place: [e.city, e.country].filter(Boolean).join(", "), dev: e.dev, ref: e.ref || "" }));
   return out;
 }

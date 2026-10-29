@@ -169,7 +169,7 @@
   /* ---------- AI (server: /api/ai → Grok or Groq) ---------- */
   async function ai(mode, payload) {
     const t = await token(); let r, j = null;
-    try { r = await fetch(CFG.AI_URL, { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, t ? { Authorization: "Bearer " + t } : {}), body: JSON.stringify(Object.assign({ mode, vid, page: location.pathname }, payload || {})) }); j = await r.json().catch(() => null); }
+    try { r = await fetch(CFG.AI_URL, { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, t ? { Authorization: "Bearer " + t } : {}), body: JSON.stringify(Object.assign({ mode, vid, page: location.pathname, lang: (() => { try { return localStorage.getItem("rq_lang") || "en"; } catch (e) { return "en"; } })() }, payload || {})) }); j = await r.json().catch(() => null); }
     catch (e) { throw new Error("You seem to be offline. Check your internet and try again."); }
     if (j && typeof j.left === "number") { aiLeft = j.left; renderCredits(); }
     if (r.ok && j && j.ok) return j;

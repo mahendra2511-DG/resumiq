@@ -128,3 +128,25 @@ API routes (`api/*.js`) require Vercel (or a Node adapter that matches the serve
 | E2E search → rank → apply → track | Partial | Manual path works; automated e2e not present |
 
 Features requiring external activation: Adzuna (optional), XAI/Groq (for AI), Supabase (recommended), future Gmail/Notion OAuth.
+
+## Copilot part 3 (assets/js/copilot3.js), rule-based, no AI credits
+- **Pipeline board** (`#/board`): drag-and-drop Kanban over the tracker stages, closed column asks why, days-in-stage and follow-up tags, and "What converts" tables by resume version, role level and channel.
+- **Network & referrals** (`#/network`): contacts per application (recruiter, referrer, alumni…), next-touch reminders, LinkedIn people-search links, six outreach templates with a 300-character check for invite notes, "Mark as sent" logging.
+- **Resume checkup** (`#/checkup`): line-by-line checks (numbers, weak openers, passive voice, repeated verbs, pronouns, buzzwords, "Objective", length, bullet size, dates, contact details, headings, symbols, skills) plus job title / education / experience-level / skills match when a job description is pasted.
+- **LinkedIn vs jobs** (`#/li-multi`): scores a LinkedIn profile against up to 3 job descriptions and lists missing keywords by how many jobs want them.
+- Applications now record **How you applied** (channel).
+
+## Copilot parts 4–5 (copilot4.js, copilot5.js, checkup.js, qbank-data.js, portfolio.js)
+- **Delivery coach** in Mock interview: filler words, pace (words per minute when spoken), long pauses, hedging, answer length. Free.
+- **Recruiter red pen** live in the Studio score tab (shared rules in `checkup.js`); bullet hints now flag clichés.
+- **Question bank** (`#/qbank`): Data Analyst questions (SQL, Excel, Power BI, Tableau, Python, statistics, case, HR) by level and company type, mark known / revise, 10-question practice rounds, add your own.
+- **Offer & CTC** (`#/offer`): CTC → in-hand (new regime FY 2025-26 / 2026-27 slabs, ₹75,000 standard deduction, 87A up to ₹12 L with marginal relief, 4% cess), compare up to 3 offers, negotiation email.
+- **Weekly goals + streak** (`#/goals`, dashboard card) and **calendar export** (.ics: interviews, follow-ups, contact reminders, deadlines). Applications have an "Interview on" date.
+- **Save-to-Resumiq bookmarklet** (Job Agent) → `#/capture` reads schema.org JobPosting, scam/hidden-text warnings, match score.
+- **Portfolio page** (`#/portfolio` → `/portfolio#p=…`): data lives in the link (compressed); also downloadable HTML. Phone number never shown.
+- **Resume versions** (`#/versions`): tailored copies linked to jobs and applications, interview rate per version.
+- **Fresher filter + off-campus drives** in Job Agent and live search.
+- **Job alerts** (`#/alerts`) + daily cron `api/alerts.js`. Env: `CRON_SECRET`, `RESEND_API_KEY`, `ALERT_FROM`, `SUPABASE_SERVICE_ROLE_KEY`, `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` (optional `SITE_URL`).
+- **Course batches** for trainers: students add a batch code in Settings; Admin shows per-batch progress (summary numbers only).
+- **Dexa language**: English or Hinglish explanations (Settings). Resume text, letters and emails stay English.
+- `vercel.json`: microphone now allowed for this site (needed for spoken answers).

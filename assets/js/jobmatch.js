@@ -91,14 +91,14 @@
   async function tailorFlow() {
     let base = A.resume.obj;
     if (!base) { const b = $("#tailor"); b.disabled = true; b.innerHTML = '<span class="spin"></span> Importing…'; try { base = (await window.RQ_IMPORT.parse(A.resume.text)).resume; } catch (e) { toast(e.message, "bad"); b.disabled = false; return; } }
-    const r = JSON.parse(JSON.stringify(base)); if (!r.targetRole && an.data.title) r.targetRole = an.data.title;
+    const r = JSON.parse(JSON.stringify(base)); if (!r.targetRole && an.data.title) r.targetRole = an.data.title; r.tailoredFor = { jobId: an.id, title: an.data.title || "", company: an.data.company || "", baseId: A.resume.id || "", at: new Date().toISOString().slice(0, 10) };
     const d = store.save({ kind: "resume", title: `${(r.contact && r.contact.name) || "Resume"} — ${an.data.company || an.data.title || "tailored"}`, data: RS.normalize(r) });
-    an.data.tailoredId = d.id; store.save({ id: an.id, kind: "analysis", title: an.title, data: an.data });
+    an.data.tailoredId = d.id; store.save({ id: an.id, kind: "analysis", title: an.title, data: an.data }); const ap = store.list("application").find(x => x.data.analysisId === an.id); if (ap) store.save({ id: ap.id, kind: "application", title: ap.title, data: Object.assign({}, ap.data, { resumeId: d.id }) });
     location.href = `/studio?id=${encodeURIComponent(d.id)}&jd=${encodeURIComponent(an.id)}&tab=job`;
   }
   function track() {
     const exists = store.list("application").find(x => x.data.analysisId === an.id); if (exists) return toast("Already in your tracker.");
-    store.save({ kind: "application", title: (an.data.title || "Job") + (an.data.company ? " · " + an.data.company : ""), data: { role: an.data.title || "", company: an.data.company || "", status: "Saved", analysisId: an.id, resumeId: A.resume.id || "", score: an.data.score, link: "", notes: "", followUp: "", applied: "" } });
+    store.save({ kind: "application", title: (an.data.title || "Job") + (an.data.company ? " · " + an.data.company : ""), data: { role: an.data.title || "", company: an.data.company || "", status: "Saved", analysisId: an.id, resumeId: (an.data.tailoredId && store.get(an.data.tailoredId) ? an.data.tailoredId : A.resume.id) || "", score: an.data.score, link: "", notes: "", followUp: "", applied: "" } });
     toast("Saved to your application tracker.", "ok");
   }
   function hist() {

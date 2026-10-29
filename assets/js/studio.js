@@ -340,10 +340,19 @@ const ICO = { contact: "👤", summary: "📝", experience: "💼", projects: "�
   function drawSide() {
     if (!R) return; const q = RS.quality(R, pages); const sc = $("#pv-score"); sc.textContent = q.score; sc.className = "badge " + (q.score >= 85 ? "ok" : q.score >= 65 ? "warn" : "bad");
     const at = $("#st-ats"); at.className = "st-ats " + (q.score >= 85 ? "ok" : q.score >= 65 ? "warn" : "bad"); $("#st-ats-n").textContent = q.score;
-    if (tab === "score") scorePane(q); if (tab === "guide") guidePane(); if (tab === "job") jobPane();
+    if (tab === "score") { scorePane(q); redPen(); } if (tab === "guide") guidePane(); if (tab === "job") jobPane();
   }
   let review = null;
   const FIXL = { headings: "Rename to standard", order: "Sort by date", verbs: "Fix openers", punct: "Make consistent", symbols: "Remove symbols", personal: "Remove", fit: "Fit to page" };
+  // live recruiter "red pen" (checkup.js): whole-resume checks the per-bullet hints can't see (pronouns in summary, buzzwords, Objective, dates, contact, headings…)
+  function redPen() {
+    const p = $("#pv-score-pane"); if (!p || !window.RQ_CHECK) return; let o; try { o = window.RQ_CHECK.checkup(R); } catch (e) { return; }
+    const bad = o.checks.filter(c => c.ok < .99).sort((a, b) => b.w * (1 - b.ok) - a.w * (1 - a.ok));
+    const d = document.createElement("div"); d.className = "card card-pad"; d.id = "pv-redpen"; d.style.marginTop = "14px";
+    d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h3 style="margin:0">🖍 Recruiter red pen <span class="small muted" style="font-weight:500">updates as you type</span></h3><span class="badge ${o.score >= 80 ? "ok" : o.score >= 60 ? "warn" : "bad"}">${o.score}/100</span></div>
+      ${bad.length ? `<ul style="margin:10px 0 0;padding-left:18px;font-size:13.5px;line-height:1.55">${bad.slice(0, 8).map(c => `<li><b>${esc(c.title)}</b>: ${esc(c.msg)}${c.ex && c.ex.length ? `<div class="small muted" style="margin-top:2px">e.g. ${c.ex[0]}</div>` : ""}</li>`).join("")}</ul>${bad.length > 8 ? `<p class="small muted" style="margin:6px 0 0">+${bad.length - 8} more in <a href="/app#/checkup">Resume checkup</a>.</p>` : ""}` : `<p class="cp-ok" style="margin:8px 0 0;color:var(--ok)">✓ All ${o.checks.length} recruiter checks pass.</p>`}`;
+    const old = $("#pv-redpen"); if (old) old.remove(); p.appendChild(d);
+  }
   function scorePane(q) {
     const p = $("#pv-score-pane"), color = q.score >= 85 ? "#16A34A" : q.score >= 65 ? "#D97706" : "#DC2626";
     const bad = q.checks.filter(c => c.part < .999).sort((a, b) => b.w * (1 - b.part) - a.w * (1 - a.part)), good = q.checks.filter(c => c.part >= .999 && c.w);

@@ -153,6 +153,7 @@
     if (/\[[^\]]+\]/.test(l)) out.push("Fill the [placeholder] with a real fact");
     else if (!/\d|%|₹|\$|\blakh|\bcrore/i.test(l)) out.push("Add a number if you have one (users, hours, %)");
     if (n > 34) out.push(`Long (${n} words)`); else if (n < 6) out.push("Too short");
+    const bz = l.match(/\b(team player|hard[- ]?working|go[- ]getter|self[- ]motivated|results[- ]driven|detail[- ]oriented|synergy|passionate|think outside the box|quick learner|fast learner|dynamic)\b/i); if (bz) out.push(`Cliché "${bz[1]}": show proof instead`);
     return out;
   }
   // ATS score: four categories with fixed, visible weights. Each check says how to fix it; some can be fixed automatically (fix key).

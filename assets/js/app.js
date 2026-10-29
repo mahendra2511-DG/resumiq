@@ -130,7 +130,7 @@
   let apF = "All";
   function applicationsView() {
     const all = store.list("application"), list = all.filter(a => apF === "All" || a.data.status === apF);
-    view.innerHTML = head("Application Tracker", "Every application in one place: status, dates, links and follow-ups.", `<button class="btn btn-primary" id="ap-add">＋ Add application</button>`) + `
+    view.innerHTML = head("Application Tracker", "Every application in one place: status, dates, links and follow-ups.", `<a class="btn btn-ghost" href="#/board">🗂 Board view</a> <button class="btn btn-primary" id="ap-add">＋ Add application</button>`) + `
       <div class="seg" style="margin-bottom:14px">${["All"].concat(STATUSES).map(s => `<button class="chip ${apF === s ? "on" : ""}" data-f="${esc(s)}">${esc(s)}${s === "All" ? ` ${all.length}` : all.filter(a => a.data.status === s).length ? " " + all.filter(a => a.data.status === s).length : ""}</button>`).join("")}</div>
       ${list.length ? `<div class="card"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Role & company</th><th>Status</th><th class="hide-s">Applied</th><th class="hide-s">Follow up</th><th class="hide-s">Match</th><th></th></tr></thead><tbody>${list.map(a => { const d = a.data, late = d.followUp && d.followUp <= today() && !["Offer", "Rejected", "Withdrawn"].includes(d.status); return `<tr><td><b>${esc(d.role || "Role")}</b><div class="small muted">${esc(d.company || "")}${d.link ? ` · <a href="${esc(/^https?:/.test(d.link) ? d.link : "https://" + d.link)}" target="_blank" rel="noopener">posting ↗</a>` : ""}</div></td>
         <td><select class="select" data-st="${esc(a.id)}" style="padding:6px 8px;font-size:13px;width:auto" aria-label="Status">${STATUSES.map(s => `<option ${s === d.status ? "selected" : ""}>${s}</option>`).join("")}</select></td><td class="hide-s small">${esc(fmtDay(d.applied)) || "—"}</td><td class="hide-s small" style="${late ? "color:var(--bad);font-weight:700" : ""}">${esc(fmtDay(d.followUp)) || "—"}</td><td class="hide-s">${d.score == null ? "—" : `<span class="badge ${d.score >= 75 ? "ok" : d.score >= 50 ? "warn" : "bad"}">${d.score}</span>`}</td>
@@ -147,10 +147,11 @@
       <div class="row"><div><label class="f" for="a-st">Status</label><select class="select" id="a-st">${STATUSES.map(s => `<option ${s === d.status ? "selected" : ""}>${s}</option>`).join("")}</select></div><div><label class="f" for="a-link">Job link</label><input class="input" id="a-link" value="${esc(d.link)}" placeholder="https://"></div></div>
       <div class="row"><div><label class="f" for="a-ap">Applied on</label><input class="input" type="date" id="a-ap" value="${esc(d.applied)}"></div><div><label class="f" for="a-fu">Follow up on</label><input class="input" type="date" id="a-fu" value="${esc(d.followUp)}"></div></div>
       <div class="row"><div><label class="f" for="a-rs">Resume used</label><select class="select" id="a-rs"><option value="">—</option>${resumes().map(r => `<option value="${esc(r.id)}" ${r.id === d.resumeId ? "selected" : ""}>${esc(r.title)}</option>`).join("")}</select></div><div><label class="f" for="a-ct">Recruiter / contact</label><input class="input" id="a-ct" value="${esc(d.contact || "")}"></div></div>
+      <div class="row"><div><label class="f" for="a-ch">How you applied (channel)</label><select class="select" id="a-ch"><option value="">—</option>${["Company website","LinkedIn Easy Apply","Naukri","Indeed","Referral","Recruiter reached out","Campus / placement cell","Job fair","Cold email","Other"].map(c => `<option ${c === d.channel ? "selected" : ""}>${c}</option>`).join("")}</select></div><div><label class="f" for="a-iv">Interview on (date &amp; time)</label><input class="input" type="datetime-local" id="a-iv" value="${esc(d.interviewAt || "")}"></div></div>
       <label class="f" for="a-n">Notes</label><textarea class="textarea" id="a-n" rows="3">${esc(d.notes)}</textarea>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn btn-ghost" onclick="RQ.closeModal()">Cancel</button><button class="btn btn-primary" id="a-save">Save</button></div>`, { wide: true });
     $("#a-save", m).onclick = () => { const v = (id) => $(id, m).value.trim(); if (!v("#a-role") && !v("#a-co")) return toast("Add at least a role or company.", "bad");
-      const nd = Object.assign({}, d, { role: v("#a-role"), company: v("#a-co"), status: v("#a-st"), link: v("#a-link"), applied: v("#a-ap"), followUp: v("#a-fu"), resumeId: v("#a-rs"), contact: v("#a-ct"), notes: v("#a-n") });
+      const nd = Object.assign({}, d, { role: v("#a-role"), company: v("#a-co"), status: v("#a-st"), link: v("#a-link"), applied: v("#a-ap"), followUp: v("#a-fu"), resumeId: v("#a-rs"), contact: v("#a-ct"), channel: v("#a-ch"), interviewAt: v("#a-iv"), notes: v("#a-n") }); if (!a || a.data.status !== nd.status) nd.stageAt = today();
       store.save({ id: a ? a.id : undefined, kind: "application", title: [nd.role, nd.company].filter(Boolean).join(" · "), data: nd }); closeModal(); toast("Saved", "ok"); route(); };
   }
 
@@ -161,7 +162,7 @@
     ["de", "Germany"], ["fr", "France"], ["nl", "Netherlands"], ["sg", "Singapore"], ["za", "South Africa"],
     ["nz", "New Zealand"], ["ie", "Ireland"], ["pl", "Poland"], ["br", "Brazil"], ["at", "Austria"], ["ch", "Switzerland"], ["es", "Spain"], ["it", "Italy"]
   ];
-  const jobSources = (q, loc, country, remote) => {
+  const jobSources = (q, loc, country, remote, fresher) => {
     const e = encodeURIComponent, qq = q || "jobs", ll = loc || "";
     const indeedHost = ({us:"www.indeed.com",gb:"uk.indeed.com",in:"in.indeed.com",ca:"ca.indeed.com",au:"au.indeed.com",de:"de.indeed.com",fr:"fr.indeed.com",nl:"nl.indeed.com",sg:"sg.indeed.com",za:"za.indeed.com",nz:"nz.indeed.com",ie:"ie.indeed.com",pl:"pl.indeed.com",br:"br.indeed.com",at:"at.indeed.com",ch:"ch.indeed.com",es:"es.indeed.com",it:"it.indeed.com"})[country] || "www.indeed.com";
     const locPart = remote ? "Remote" : ll;
@@ -207,6 +208,20 @@
         ["JobsDB", `https://www.jobsdb.com/jobs?keywords=${e(qq)}`]
       ]});
     }
+    if (fresher) {
+      const fq = qq + " fresher";
+      sources.unshift({ group: "🎓 Freshers & entry level", items: [
+        ["LinkedIn (entry level)", `https://www.linkedin.com/jobs/search/?keywords=${e(qq)}${locPart ? "&location=" + e(locPart) : ""}&f_E=1%2C2`],
+        ...(country === "in" ? [["Naukri (0 yrs)", `https://www.naukri.com/${slug(qq)}-jobs${ll ? "-in-" + slug(ll) : ""}?experience=0`], ["Internshala jobs", `https://internshala.com/jobs/keywords-${slug(qq)}/`], ["Internshala internships", `https://internshala.com/internships/keywords-${slug(qq)}/`], ["Indeed (fresher)", `https://${indeedHost}/jobs?q=${e(fq)}${locPart ? "&l=" + e(locPart) : ""}`]] : [["Indeed (entry level)", `https://${indeedHost}/jobs?q=${e(qq + " entry level")}${locPart ? "&l=" + e(locPart) : ""}`]]),
+        ["Google Jobs (fresher)", `https://www.google.com/search?q=${e(fq + " jobs" + locQ)}&ibp=htl;jobs`]
+      ]});
+      sources.splice(1, 0, { group: "📣 Off-campus drives & walk-ins", items: [
+        ["Off-campus drives", `https://www.google.com/search?q=${e("off campus drive " + new Date().getFullYear() + " " + qq)}`],
+        ["Walk-in drives", `https://www.google.com/search?q=${e("walk-in drive " + qq + (ll ? " " + ll : ""))}`],
+        ["Freshersworld", `https://www.google.com/search?q=${e("site:freshersworld.com " + qq)}`],
+        ["Company career pages", `https://www.google.com/search?q=${e(qq + " graduate trainee OR fresher careers " + new Date().getFullYear())}`]
+      ]});
+    }
     return sources;
   };
   const jobFit = (job, resume) => {
@@ -238,6 +253,7 @@
             <div class="row" style="margin-top:10px">
               <div><label class="f" for="gj-loc">City or region (optional)</label><input class="input" id="gj-loc" placeholder="Bengaluru, Mumbai, Delhi NCR, Remote"></div>
               <div><label class="f" for="gj-type">Work arrangement</label><select class="select" id="gj-type"><option value="any">Any</option><option value="remote">Remote</option><option value="hybrid">Hybrid</option><option value="onsite">On-site</option></select></div>
+              <div><label class="f" for="gj-exp">Experience</label><select class="select" id="gj-exp"><option value="any">Any</option><option value="fresher">Fresher / 0–1 year</option></select></div>
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center">
               <button class="btn btn-primary" id="gj-search" style="padding:12px 22px">🔍 Find jobs on portals</button>
@@ -250,6 +266,7 @@
       <div id="gj-agent-tip" class="note info" style="margin:18px 0 0;display:none"></div>
       <div id="gj-sources" style="margin-top:16px"></div>
       <div id="gj-live-out" style="margin-top:16px"></div>
+      <div class="card card-pad" style="margin-top:18px"><h3 style="margin-top:0">✨ Roles that fit your resume</h3><p class="small muted">Dexa reads your resume and suggests exact-fit and stretch roles, with the gap to close. Click a role to search it above.</p><div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:220px">${resumeSel("jb-r")}</div><button class="btn btn-ai" id="jb-go">✨ Suggest roles</button></div><div id="jb-out" style="margin-top:14px"></div></div>
       <div class="grid g2" style="align-items:start;margin-top:22px">
         <div class="card card-pad"><h3 style="margin-top:0">Add a job posting</h3><p class="small muted">Paste a public job URL or the description. Suspicious hidden / instruction-like text is flagged before you use it.</p>
           <label class="f" for="gj-url">Job posting URL (optional)</label><input class="input" id="gj-url" placeholder="https://company.com/careers/job-id">
@@ -261,12 +278,13 @@
           <div class="note" style="margin-top:14px">For a full evaluation, open a saved job in <b>Fit check</b> or <b>Job match</b>. ResumeIQ never submits applications automatically.</div>
         </div>
       </div>
+      ${window.RQ_CP5 ? window.RQ_CP5.bookmarkCard() : ""}
       <div class="page-head" style="margin-top:28px"><div><h2 style="font-size:22px;margin:0">Saved opportunities</h2><p>Jobs from portal search or manual add. Duplicate URLs are detected.</p></div><button class="btn btn-ghost btn-sm" id="gj-export">Export CSV</button></div><div id="gj-saved"></div>`;
     fetch("/api/jobs").then(r=>r.json()).then(o=>{ const n=$("#gj-live-note"); if(n)n.textContent=o.configured?"Live listings enabled · Adzuna":"Live listings need Adzuna API credentials in Vercel."; }).catch(()=>{const n=$("#gj-live-note");if(n)n.textContent="Live listings unavailable; global job-board links still work.";});
     const drawSources = () => {
       const q = $("#gj-q").value.trim(), loc = $("#gj-loc").value.trim(), country = $("#gj-country").value, type = $("#gj-type").value;
       const remote = type === "remote";
-      const groups = jobSources(q, loc, country, remote);
+      const groups = jobSources(q, loc, country, remote, $("#gj-exp") && $("#gj-exp").value === "fresher");
       const tip = $("#gj-agent-tip");
       if (!q) {
         $("#gj-sources").innerHTML = `<span class="small muted">Type a job title above. The agent will prepare portal searches for the selected country and location.</span>`;
@@ -287,7 +305,7 @@
           </div>
         </div>`).join("");
     };
-    ["#gj-q","#gj-loc","#gj-country","#gj-type"].forEach(id=>$(id).addEventListener("input",drawSources)); drawSources();
+    ["#gj-q","#gj-loc","#gj-country","#gj-type","#gj-exp"].forEach(id=>$(id).addEventListener("input",drawSources)); try { if (localStorage.getItem("rq_exp") === "fresher") $("#gj-exp").value = "fresher"; } catch (e) {} $("#gj-exp").addEventListener("change", () => { try { localStorage.setItem("rq_exp", $("#gj-exp").value); } catch (e) {} }); drawSources();
     const resumeTextForFit = () => { const id = $("#gj-resume") && $("#gj-resume").value; return id ? resumeText(id) : ""; };
     const integrity = (s) => { const flags=[]; if(/display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0|opacity\s*:\s*0/i.test(s)) flags.push("possible hidden styling"); if(/ignore (all )?(previous|above) instructions|system prompt|reveal (the )?(system|secret)|send .*password/i.test(s)) flags.push("instruction-like text"); if(/[\u200B-\u200F\uFEFF]/.test(s)) flags.push("invisible Unicode characters"); return flags; };
     const refreshIntegrity = () => { const flags=integrity($("#gj-desc").value); $("#gj-integrity").innerHTML = flags.length ? `<span class="badge warn">Review posting: ${esc(flags.join(", "))}</span> Treat job text as untrusted; it will not be executed.` : $("#gj-desc").value.trim() ? `<span class="badge ok">Basic integrity check passed</span> Still verify the posting and employer before applying.` : ""; };
@@ -304,17 +322,17 @@
     };
     const addToTracker = (d) => { const exists=store.list("application").some(a=>a.data.analysisId===d.id || (d.data.jobUrl && a.data.link===d.data.jobUrl)); if(exists) return toast("Already in your application tracker."); store.save({kind:"application",title:d.title,data:{role:d.data.title,company:d.data.company,status:"Saved",analysisId:d.id,resumeId:d.data.resumeId||"",score:d.data.quickFit,link:d.data.jobUrl||"",notes:"Added from Global Job Search",followUp:"",applied:""}}); toast("Added to application tracker.","ok"); };
     const refreshSaved = () => {
-      const list=docs().sort((a,b)=>String(b.updatedAt||b.createdAt||"").localeCompare(String(a.updatedAt||a.createdAt||"")));
+      const list=docs().sort((a,b)=>String(b.updated||b.created||"").localeCompare(String(a.updated||a.created||"")));
       $("#gj-saved").innerHTML = list.length ? `<div class="grid g2">${list.map(d=>{const x=d.data, url=safeHttpUrl(x.jobUrl||x.url), score=x.quickFit; return `<article class="card card-pad"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start"><div><h3 style="margin:0 0 4px">${esc(x.title||d.title)}</h3><div class="small muted">${esc(x.company||"Company not specified")} · ${esc(x.location||x.country||"Location not specified")}</div></div>${score!=null?`<span class="badge ${score>=70?"ok":score>=45?"brand":"warn"}">${score}% quick fit</span>`:""}</div>${x.salaryMin||x.salaryMax?`<p class="small" style="margin:8px 0">${esc(x.salaryCurrency||"")} ${x.salaryMin?Number(x.salaryMin).toLocaleString():"—"} – ${x.salaryMax?Number(x.salaryMax).toLocaleString():"—"}</p>`:""}<p class="small muted" style="margin:8px 0">${esc(String(x.jd||"").slice(0,230))}${String(x.jd||"").length>230?"…":""}</p><div style="display:flex;gap:6px;flex-wrap:wrap">${url?`<a class="btn btn-ghost btn-sm" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open posting ↗</a>`:""}<a class="btn btn-ghost btn-sm" href="https://www.google.com/search?q=${encodeURIComponent((x.company||"")+" company reviews")}" target="_blank" rel="noopener noreferrer">Company research ↗</a><a class="btn btn-ghost btn-sm" href="https://www.google.com/search?q=${encodeURIComponent((x.title||"")+" salary "+(x.country||""))}" target="_blank" rel="noopener noreferrer">Salary research ↗</a><button class="btn btn-ghost btn-sm" data-fit="${esc(d.id)}">Full fit check</button><button class="btn btn-primary btn-sm" data-track="${esc(d.id)}">Add to tracker</button><button class="btn btn-ghost btn-sm" data-remove="${esc(d.id)}">Remove</button></div></article>`}).join("")}</div>` : empty("🔎","No saved jobs yet","Search job boards above or paste a posting to start building your shortlist.","");
       $$("[data-track]").forEach(b=>b.onclick=()=>{const d=store.get(b.dataset.track);if(d)addToTracker(d);});
-      $$("[data-fit]").forEach(b=>b.onclick=()=>{const d=store.get(b.dataset.fit);if(d){location.hash="#/fit";}});
+      $$("[data-fit]").forEach(b=>b.onclick=()=>{const d=store.get(b.dataset.fit);if(d){if(window.RQ_CP&&window.RQ_CP.setPending)window.RQ_CP.setPending({jd:d.data.jd||d.data.description||"",title:d.data.title||"",company:d.data.company||""});location.hash="#/fit";}});
       $$("[data-remove]").forEach(b=>b.onclick=async()=>{const d=store.get(b.dataset.remove);if(d && await RQ.confirm("Remove this saved job?","Remove job",true)){store.remove(d.id);refreshSaved();}});
     };
     $("#gj-search").onclick=()=>{if(!$("#gj-q").value.trim())return toast("Enter a job title or keyword first.","bad");drawSources();$("#gj-sources").scrollIntoView({behavior:"smooth",block:"nearest"});};
     $("#gj-live").onclick=async()=>{
       const q=$("#gj-q").value.trim(); if(!q)return toast("Enter a job title or keyword first.","bad");
       const b=$("#gj-live"); busy(b,true,"Searching listings…"); $("#gj-live-out").innerHTML="";
-      try { const r=await fetch("/api/jobs",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:q,location:$("#gj-loc").value.trim(),country:$("#gj-country").value,remote:$("#gj-type").value==="remote"})}); const o=await r.json(); if(!r.ok||!o.ok)throw new Error(o.message||"Live job search is not configured.");
+      try { const r=await fetch("/api/jobs",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:q,location:$("#gj-loc").value.trim(),country:$("#gj-country").value,remote:$("#gj-type").value==="remote",fresher:$("#gj-exp").value==="fresher"})}); const o=await r.json(); if(!r.ok||!o.ok)throw new Error(o.message||"Live job search is not configured.");
         const resume=resumeTextForFit(); const jobs=(o.jobs||[]).map(j=>({...j,quickFit:resume?jobFit({title:j.title,description:j.description},resume):null})).sort((a,b)=>(b.quickFit||0)-(a.quickFit||0));
         $("#gj-live-out").innerHTML=`<div class="note">${jobs.length} listings returned by <b>Adzuna</b>. Results are from the selected country; open the original posting for full details.</div>${jobs.length?`<p class="small muted" style="margin:10px 0 0"><a href="${esc(o.attribution&&o.attribution.url||"https://www.adzuna.com/")}" target="_blank" rel="noopener noreferrer">Jobs by Adzuna ↗</a></p><div class="grid g2" style="margin-top:12px">${jobs.map((j,i)=>`<article class="card card-pad" style="box-shadow:none"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(j.title)}</b>${j.quickFit!=null?`<span class="badge ${j.quickFit>=70?"ok":j.quickFit>=45?"brand":"warn"}">${j.quickFit}% fit</span>`:""}</div><p class="small muted" style="margin:5px 0">${esc(j.company||"Company not listed")} · ${esc(j.location||"")}</p>${j.salaryMin||j.salaryMax?`<p class="small" style="margin:4px 0">${esc(j.salaryCurrency||"")} ${j.salaryMin?Number(j.salaryMin).toLocaleString():"—"}–${j.salaryMax?Number(j.salaryMax).toLocaleString():"—"}</p>`:""}<p class="small muted">${esc(String(j.description||"").slice(0,220))}${String(j.description||"").length>220?"…":""}</p><div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn btn-ghost btn-sm" href="${esc(safeHttpUrl(j.url))}" target="_blank" rel="noopener noreferrer">Original listing ↗</a><button class="btn btn-primary btn-sm" data-live-save="${i}">Save job</button></div></article>`).join("")}</div>`:empty("🌍","No listings found","Try a broader title or another country.","")}`;
         $$("[data-live-save]").forEach(btn=>btn.onclick=()=>{const j=jobs[+btn.dataset.liveSave];saveJob({...j,source:"global-search",country:$("#gj-country").value});toast("Job saved to your shortlist.","ok");});
@@ -322,6 +340,13 @@
     };
     $("#gj-save").onclick=()=>{const title=$("#gj-title").value.trim(), company=$("#gj-company").value.trim(), desc=$("#gj-desc").value.trim(), url=$("#gj-url").value.trim(); if(!title&&!desc&&!url)return toast("Add a title, URL or job description.","bad"); if(url&&!safeHttpUrl(url))return toast("Enter a valid http(s) URL.","bad"); if(!desc&&!url)return toast("Paste the job description or add the posting URL.","bad"); const flags=integrity(desc); if(flags.length&&!confirm("The posting contains suspicious text ("+flags.join(", ")+"). Save it anyway for manual review?"))return; saveJob({title:title||"Job posting",company,description:desc,url,source:"manual-job"}); toast("Job saved.","ok"); $("#gj-title").value="";$("#gj-company").value="";$("#gj-desc").value="";$("#gj-url").value="";refreshIntegrity(); };
     $("#gj-export").onclick=()=>{const rows=docs().map(d=>d.data), cols=["title","company","location","country","jobUrl","quickFit","salaryMin","salaryMax","salaryCurrency","posted","savedAt"]; const csv=[cols.join(","),...rows.map(r=>cols.map(k=>'"'+String(r[k]??"").replace(/"/g,'""').replace(/[\r\n]+/g," ")+'"').join(","))].join("\r\n"); download(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}),"resumiq-global-jobs-"+today()+".csv");};
+    const r0 = $("#jb-r") && resumeObj($("#jb-r").value); if (r0 && r0.targetRole && !$("#gj-q").value) { $("#gj-q").value = r0.targetRole; drawSources(); }
+    if ($("#jb-go")) $("#jb-go").onclick = async () => { const rid = $("#jb-r") && $("#jb-r").value; if (!rid) return toast("Create a resume first.", "bad"); const b = $("#jb-go"); busy(b, true, "Thinking…");
+      try { const o = await RQ.ai("jobs", { text: resumeText(rid).slice(0, 6000), location: $("#gj-loc").value, role: (resumeObj(rid) || {}).targetRole });
+        $("#jb-out").innerHTML = `<div class="grid g2">${(o.roles || []).map((x, i) => `<div class="card card-pad" style="box-shadow:none"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(x.title)}</b><span class="badge ${x.fit === "strong" ? "ok" : x.fit === "good" ? "brand" : "warn"}">${esc(x.fit)}</span></div><p class="small" style="margin:6px 0">${esc(x.why)}</p>${x.gap ? `<p class="small muted" style="margin:0 0 8px">Gap: ${esc(x.gap)}</p>` : ""}<button class="btn btn-ghost btn-sm" data-role="${i}">🔍 Search this role</button></div>`).join("")}</div>`;
+        $$("[data-role]").forEach(btn => btn.onclick = () => { $("#gj-q").value = o.roles[+btn.dataset.role].title; drawSources(); $("#gj-sources").scrollIntoView({ behavior: "smooth", block: "nearest" }); });
+      } catch (e) { toast(e.message, "bad"); } busy(b, false); window.RQ.renderCredits(); };
+    if ($("#bm-copy")) $("#bm-copy").onclick = () => copy($("#bm-code").value);
     refreshSaved(); window.RQ.renderCredits();
   }
 
@@ -330,7 +355,9 @@
     const u = window.RQ.user;
     view.innerHTML = head("Settings & data", "Your data, your control.") + `<div class="grid g2" style="align-items:start">
       <div class="card card-pad"><h3>Account</h3>${u ? `<p>Signed in as <b>${esc(u.email)}</b></p><p class="small muted">${store.cloud ? "✓ Cloud copy is on: your resumes sync to your account." : esc(store.cloudErr || "Cloud copy is not available right now; data is saved in this browser.")}</p><button class="btn btn-ghost" id="s-out">Sign out</button>` : `<p class="muted">You're using Resumiq as a guest. Everything is saved in this browser only. Create a free account to sync across devices and get more daily AI credits.</p><button class="btn btn-primary" id="s-in">Sign in / Create account</button>`}
-        <h3 style="margin-top:22px">AI credits</h3><p class="small muted">Dexa AI is free with a daily limit (guests get fewer). Credits reset at midnight IST. Rule-based checks, the editor, job matching and downloads never use credits.</p><span class="badge brand" data-ai-left></span></div>
+        <h3 style="margin-top:22px">AI credits</h3><p class="small muted">Dexa AI is free with a daily limit (guests get fewer). Credits reset at midnight IST. Rule-based checks, the editor, job matching and downloads never use credits.</p><span class="badge brand" data-ai-left></span>
+        <h3 style="margin-top:22px">Dexa language</h3><p class="small muted">Explanations and feedback in English or Hinglish. Resume lines, letters and emails always stay in English.</p><select class="select" id="s-lang" style="max-width:260px"><option value="en">English</option><option value="hinglish">Hinglish (Hindi + English)</option></select>
+        <h3 style="margin-top:22px">Course batch (optional)</h3><p class="small muted">Studying in a batch? Add the project / batch code your trainer gave you (e.g. P1426). Your trainer then sees your progress summary (resume score, applications, interviews), never your resume text.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><input class="input" id="s-batch" maxlength="20" placeholder="P1426" style="max-width:160px"><button class="btn btn-ghost" id="s-batch-save">Save</button></div><p class="small muted" id="s-batch-note" style="margin:6px 0 0"></p></div>
       <div class="card card-pad"><h3>Your data</h3><p class="small muted">${store.list().length} items saved (${resumes().length} resumes, ${analyses().filter(a => !["global-search", "manual-job"].includes(a.data && a.data.source)).length} job matches, ${analyses().filter(a => ["global-search", "manual-job"].includes(a.data && a.data.source)).length} saved jobs, ${store.list("application").length} applications).</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost" id="s-exp">⬇ Export everything (.json)</button><button class="btn btn-ghost" id="s-imp">⬆ Import a backup</button></div>
         <h3 style="margin-top:22px;color:var(--bad)">Danger zone / Safe reset</h3>
@@ -342,24 +369,27 @@
           <button class="btn btn-danger" id="s-wipe">Delete ALL workspace data</button>
         </div>
         <input type="file" id="s-file" accept=".json" hidden></div></div>`;
+    try { $("#s-lang").value = localStorage.getItem("rq_lang") || "en"; } catch (e) {}
+    $("#s-lang").onchange = (e) => { try { localStorage.setItem("rq_lang", e.target.value); } catch (x) {} toast(e.target.value === "hinglish" ? "Dexa ab Hinglish me samjhayegi." : "Dexa will explain in English.", "ok"); };
+    if (window.RQ_CP5) { const b = window.RQ_CP5.batch(); $("#s-batch").value = b.code || ""; $("#s-batch-note").textContent = b.code ? (u ? "Shared with your trainer as a summary." : "Sign in so your trainer can see your progress.") : ""; $("#s-batch-save").onclick = () => { const v = $("#s-batch").value.trim().toUpperCase(); if (v && !/^[A-Z0-9-]{2,20}$/.test(v)) return toast("Use letters and numbers only, like P1426.", "bad"); window.RQ_CP5.setBatch(v); toast(v ? "Batch saved: " + v : "Batch removed.", "ok"); route(); }; } else $("#s-batch-save").disabled = true;
     if ($("#s-out")) $("#s-out").onclick = () => RQ.signOut(); if ($("#s-in")) $("#s-in").onclick = () => RQ.authModal("signup");
     $("#s-exp").onclick = () => download(new Blob([store.exportAll()], { type: "application/json" }), "resumiq-backup-" + today() + ".json");
     $("#s-imp").onclick = () => $("#s-file").click();
     $("#s-file").onchange = async () => { try { const j = JSON.parse(await $("#s-file").files[0].text()); const docs = Array.isArray(j.docs) ? j.docs : j.data && j.data.sections ? [{ kind: "resume", title: j.title || "Restored resume", data: j.data }] : null; if (!docs) throw 0; let n = 0; docs.forEach(d => { if (d && d.kind && d.data) { store.save({ id: store.get(d.id) ? undefined : d.id, kind: d.kind, title: d.title, data: d.data }); n++; } }); toast(`Imported ${n} item(s).`, "ok"); route(); } catch (e) { toast("That isn't a Resumiq backup file.", "bad"); } };
     const clearBy = async (pred, label) => {
-      const all = store.list();
+      const all = store.all ? store.all() : store.list();
       const targets = all.filter(pred);
       if (!targets.length) return toast("Nothing matching to clear.", "ok");
       if (!(await RQ.confirm(`This will remove ${targets.length} item(s): ${label}. Continue?`, "Clear", true))) return;
       for (const d of targets) await store.remove(d.id);
       toast(`Cleared ${targets.length} item(s).`, "ok"); route();
     };
-    $("#s-reset-jobs").onclick = () => clearBy(d => d.kind === "analysis" && d.data && ["global-search","manual-job","rank"].includes(d.data.source || d.data.cp), "cached jobs / shortlist / rank results");
-    $("#s-reset-drafts").onclick = () => clearBy(d => (d.kind === "analysis" && d.data && (d.data.cp === "apply" || d.data.cp === "form")) || d.kind === "cover", "generated application drafts & cover letters");
+    $("#s-reset-jobs").onclick = () => clearBy(d => d.kind === "analysis" && d.data && (["global-search","manual-job"].includes(d.data.source) || ["shortlist", "fit"].includes(d.data.cp)), "cached jobs / shortlist / rank results");
+    $("#s-reset-drafts").onclick = () => clearBy(d => (d.kind === "analysis" && d.data && (d.data.cp === "forms" || d.data.cp === "mock")) || d.kind === "cover", "generated application drafts & cover letters");
     $("#s-reset-prefs").onclick = async () => {
       if (!(await RQ.confirm("Reset career-profile filters and search preferences to defaults? Your resume content is kept.", "Reset preferences", true))) return;
-      const p = store.list("analysis").find(d => d.data && d.data.cp === "profile");
-      if (p) await store.remove(p.id);
+      const ps = store.list("cp:profile"); if (!ps.length) return toast("No saved profile to reset.", "ok");
+      for (const p of ps) await store.remove(p.id);
       toast("Preferences reset.", "ok"); route();
     };
     $("#s-wipe").onclick = async () => { if (!(await RQ.confirm("Delete ALL your Resumiq data (resumes, matches, applications, profile)? This can't be undone. Export a backup first if unsure.", "Delete everything", true))) return; await store.wipe(); Object.keys(localStorage).filter(k => /^rq_/.test(k)).forEach(k => localStorage.removeItem(k)); toast("All data deleted."); route(); };

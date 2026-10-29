@@ -57,6 +57,12 @@ function parseJSON(t) {
 }
 
 /* ---------- modes ---------- */
+// Optional Hinglish explanations (Settings → Dexa language). Text the user will paste or send (resume lines, letters, emails, answers) stays English.
+const LANG_MODES = new Set(["chat", "review", "fit", "answer", "upskill", "jobs", "apply_review"]);
+function withLang(msgs, b) {
+  if (String(b.lang || "") !== "hinglish" || !LANG_MODES.has(b.mode) || !Array.isArray(msgs) || !msgs[0] || msgs[0].role !== "system") return msgs;
+  const m = msgs.slice(); m[0] = Object.assign({}, m[0], { content: m[0].content + "\nLANGUAGE: Write your explanations, feedback, reasons and advice in simple, friendly Hinglish (Hindi in Roman script mixed with common English words, e.g. \"Ye bullet strong hai, bas ek number add karo\"). Keep any resume text, bullet rewrites, summaries, cover letters, emails, sample answers, job titles and skill names in clear professional English. Never use Devanagari script. Keep the JSON keys and format exactly as asked." }); return m;
+}
 const RULES = `You are Dexa, the resume and career coach inside Resumiq (a free tool for job seekers, many in India).
 Hard rules:
 - Use ONLY facts the user gave you. Never invent employers, job titles, dates, degrees, certifications, tools, metrics or results.
@@ -160,7 +166,7 @@ module.exports = async (req, res) => {
   try {
     let out = null, tries = 0;
     while (!out && tries < 2) {
-      tries++; const r = await complete(P, M.build(b), M.json, M.tokens);
+      tries++; const r = await complete(P, withLang(M.build(b), b), M.json, M.tokens);
       if (!M.json) out = M.out(r.text);
       else { const j = parseJSON(r.text); if (j && (!M.need || M.need(j))) out = M.out(j); }
     }

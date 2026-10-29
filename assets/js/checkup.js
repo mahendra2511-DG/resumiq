@@ -1,0 +1,70 @@
+/* Resumiq — recruiter "red pen" resume checkup (rule-based, no AI). Used by the workspace (#/checkup) and live in the Studio.
+   window.RQ_CHECK.checkup(resume, jobDescriptionText?) → { score, cats, checks, jm } */
+(function () {
+  "use strict";
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const lc = (s) => String(s || "").toLowerCase(), uniq = (a) => [...new Set(a)];
+  const wc = (t) => (String(t || "").match(/\S+/g) || []).length;
+  const RS = () => window.RQ_RESUME, JD = () => window.RQ_JD;
+  const levelOf = (t) => { t = lc(t); return /\bintern|trainee|apprentice/.test(t) ? "Intern / trainee" : /\b(junior|jr|associate|entry|fresher|graduate)\b/.test(t) ? "Junior / associate" : /\b(lead|principal|staff|head|manager|director|vp)\b/.test(t) ? "Lead / manager" : /\b(senior|sr)\b/.test(t) ? "Senior" : "Mid-level"; };
+  const BUZZ = ["team player", "hard[- ]?working", "go[- ]getter", "self[- ]motivated", "results[- ]driven", "detail[- ]oriented", "think outside the box", "synergy", "dynamic", "passionate", "proactive", "dedicated", "motivated", "best of breed", "thought leader", "rockstar", "ninja", "guru", "out of the box", "value add", "seasoned", "strategic thinker", "excellent communication skills", "quick learner", "fast learner", "highly skilled"];
+  const WEAK = ["responsible for", "worked on", "helped (with|to)?", "assisted (with|in)?", "involved in", "participated in", "duties included", "tasked with", "handled", "in charge of", "did", "made", "was part of"];
+  const BUZZ_RE = new RegExp("\\b(" + BUZZ.join("|") + ")\\b", "i"), WEAK_RE = new RegExp("^\\s*(" + WEAK.join("|") + ")\\b", "i");
+  const PASSIVE_RE = /\b(was|were|been|being|is|are)\s+(\w+ly\s+)?(\w+ed|built|done|made|led|run|given|taken|written|shown|seen|chosen|driven|known)\b(\s+by\b)?/i;
+  const PRON_RE = /\b(I|me|my|mine|myself|we|our|us)\b/;
+  const mark = (s, re) => esc(s).replace(new RegExp(re.source, re.flags.replace("g", "") + "g"), (m) => `<mark>${m}</mark>`);
+  function checkup(r, jdText) {
+    const RSx = RS(), bl = RSx.allBullets(r), txt = RSx.text(r), lev = r.level || "early";
+    const C2 = []; const add = (cat, w, ok, title, msg, ex) => C2.push({ cat, w, ok, title, msg, ex: (ex || []).slice(0, 4) });
+    // Impact
+    const num = bl.filter(b => /\d|%|₹|\$|\blakh|\bcrore|\bk\b/i.test(b));
+    add("Impact", 3, bl.length ? num.length / bl.length >= .5 ? 1 : num.length / bl.length / .5 : 0, "Quantified results", bl.length ? `${num.length} of ${bl.length} bullets have a number. Aim for at least half: users, rows, %, ₹, hours saved, time cut.` : "Add experience or project bullets first.", bl.filter(b => !num.includes(b)).map(esc));
+    const weak = bl.filter(b => WEAK_RE.test(b)); add("Impact", 2, weak.length ? Math.max(0, 1 - weak.length / Math.max(3, bl.length / 2)) : 1, "Strong action verbs", weak.length ? `${weak.length} bullet${weak.length > 1 ? "s start" : " starts"} with a weak phrase. Start with what you did: Built, Cut, Automated, Analysed, Led.` : "Every bullet starts with an action. Good.", weak.map(b => mark(b, WEAK_RE)));
+    const pas = bl.filter(b => PASSIVE_RE.test(b)); add("Impact", 2, pas.length ? Math.max(0, 1 - pas.length / 3) : 1, "Active voice", pas.length ? `${pas.length} bullet${pas.length > 1 ? "s use" : " uses"} passive voice (“was created by”). Rewrite so you are the one acting.` : "No passive voice found.", pas.map(b => mark(b, PASSIVE_RE)));
+    const firstW = bl.map(b => lc((b.match(/^[\W]*(\w+)/) || [])[1] || "")).filter(Boolean), rep = Object.entries(firstW.reduce((m, w) => (m[w] = (m[w] || 0) + 1, m), {})).filter(([, n]) => n >= 3);
+    add("Impact", 1, rep.length ? 0.4 : 1, "Varied verbs", rep.length ? `You start ${rep.map(([w, n]) => `${n} bullets with “${w}”`).join(", ")}. Vary them so each line reads fresh.` : "Bullet openings are varied.");
+    // Language
+    const pr = bl.concat(String(r.summary || "").split(/(?<=[.!?])\s+/)).filter(s => PRON_RE.test(s)); add("Language", 2, pr.length ? Math.max(0, 1 - pr.length / 3) : 1, "No personal pronouns", pr.length ? `Resumes skip “I / my / we”. Found in ${pr.length} line${pr.length > 1 ? "s" : ""}.` : "No pronouns. Good.", pr.map(b => mark(b, PRON_RE)));
+    const bz = [txt].join(" ").match(new RegExp(BUZZ_RE.source, "gi")) || []; add("Language", 2, bz.length ? Math.max(0, 1 - bz.length / 4) : 1, "No buzzwords or clichés", bz.length ? `Found: ${uniq(bz.map(lc)).join(", ")}. Replace each with proof (what you did and the result).` : "No clichés found.");
+    const obj = (r.sections || []).some(s => /objective/i.test(s.title || "")) || /^\s*(career )?objective\b/im.test(txt) || /\b(seeking|looking for) (a|an) (challenging|suitable|good)\b/i.test(r.summary || ""); add("Language", 1, obj ? 0 : 1, "Modern summary, not an “Objective”", obj ? "“Objective / seeking a challenging role” is outdated. Write a 2–3 line summary: who you are, your strongest proof, what you want." : "Summary style is modern.");
+    const refs = /references (are )?available( upon| on)? request/i.test(txt); add("Language", 1, refs ? 0 : 1, "No filler lines", refs ? "Remove “References available upon request”. It wastes a line." : "No filler lines found.");
+    // Brevity & structure
+    const words = wc(txt), cap = { student: 450, early: 650, mid: 900, senior: 1100 }[lev] || 700; add("Brevity", 2, words <= cap ? (words >= 180 ? 1 : .5) : Math.max(0, 1 - (words - cap) / cap), "Length", `${words} words. For your level, aim for ${lev === "student" || lev === "early" ? "one page (about 300–" + cap + ")" : "under ~" + cap} words.`);
+    const longB = bl.filter(b => wc(b) > 32), shortB = bl.filter(b => wc(b) < 6); add("Brevity", 1, longB.length + shortB.length ? Math.max(0, 1 - (longB.length + shortB.length) / 4) : 1, "Bullet length", longB.length + shortB.length ? `${longB.length} bullet${longB.length === 1 ? " is" : "s are"} over 32 words and ${shortB.length} under 6. One or two lines each is ideal.` : "Bullets are a good length.", longB.concat(shortB).map(esc));
+    const many = (r.experience || []).filter(e => RSx.lines(e.bullets).length > 6); add("Brevity", 1, many.length ? .3 : 1, "Bullets per role", many.length ? `${many.map(e => e.role || e.company).join(", ")} ${many.length > 1 ? "have" : "has"} more than 6 bullets. Keep the 3–5 strongest.` : "3–6 bullets per role. Good.");
+    // Format
+    const ds = [].concat((r.experience || []).map(e => [e.start, e.end, e.current]), (r.education || []).map(e => [e.start, e.end, false]));
+    const missing = (r.experience || []).filter(e => (e.role || e.company) && (!e.start || (!e.end && !e.current))); const rev = (r.experience || []).filter(e => e.start && e.end && e.end < e.start);
+    const order = (r.experience || []).filter(e => e.start).map(e => e.current ? "9999" : (e.end || e.start)); const unsorted = order.some((v, i) => i && v > order[i - 1]);
+    add("Format", 2, missing.length || rev.length || unsorted ? (rev.length ? 0 : .4) : (ds.length ? 1 : .6), "Consistent dates", missing.length || rev.length || unsorted ? [missing.length ? `${missing.length} role${missing.length > 1 ? "s miss" : " misses"} a start or end date` : "", rev.length ? "an end date is before its start" : "", unsorted ? "roles are not newest-first" : ""].filter(Boolean).join("; ") + "." : "Dates are complete and newest-first.", missing.map(e => esc(e.role || e.company)));
+    const c = r.contact || {}, mail = c.email || "", badMail = /\b(cute|sexy|cool|king|queen|baby|love|xxx|420|69)\b|[._]{2,}/i.test(mail.split("@")[0] || "");
+    const cmiss = [!mail && "email", !c.phone && "phone", !c.location && "city", !c.linkedin && "LinkedIn"].filter(Boolean); add("Format", 2, cmiss.length || badMail ? Math.max(0, 1 - cmiss.length / 4 - (badMail ? .5 : 0)) : 1, "Contact details", cmiss.length ? `Missing: ${cmiss.join(", ")}.` + (badMail ? " Use a plain firstname.lastname email." : "") : badMail ? "Use a plain, professional email address (firstname.lastname@…)." : "Email, phone, city and LinkedIn are all there.");
+    const STD = /^(summary|profile|professional summary|experience|work experience|professional experience|employment|projects|education|skills|technical skills|certifications|achievements|awards|publications|languages|volunteering|interests|internships?|training|courses)$/i;
+    const odd = (r.sections || []).filter(s => !s.hidden && !STD.test((s.title || "").trim())); add("Format", 1, odd.length ? .4 : 1, "Standard section headings", odd.length ? `ATS software looks for standard headings. Consider renaming: ${odd.map(s => "“" + s.title + "”").join(", ")}.` : "All headings are standard.");
+    const sp = txt.match(/[☀-➿\u{1F300}-\u{1FAFF}★☆✔✓➤►■◆●]/gu) || []; const caps = bl.filter(b => (b.match(/\b[A-Z]{5,}\b/g) || []).filter(w => !/^(SQL|HTML|AWS|GCP|JSON|EXCEL|SCRUM|REACT)$/.test(w)).length >= 2);
+    add("Format", 1, sp.length || caps.length ? .4 : 1, "Plain characters", sp.length || caps.length ? [sp.length ? `Remove emoji / special symbols (${uniq(sp).join(" ")}); some ATS read them as garbage` : "", caps.length ? `${caps.length} bullet${caps.length > 1 ? "s use" : " uses"} ALL CAPS words` : ""].filter(Boolean).join(". ") + "." : "No emoji, symbols or shouting.");
+    const sk = [].concat(...(r.skills || []).map(s => String(s.items || "").split(/,|\n/))).map(s => s.trim()).filter(Boolean); add("Format", 1, sk.length >= 6 && sk.length <= 30 ? 1 : .4, "Skills section", sk.length < 6 ? `Only ${sk.length} skills listed. List 8–20 tools and methods you can prove.` : sk.length > 30 ? `${sk.length} skills is a lot. Keep the 15–25 that matter for your target role.` : `${sk.length} skills listed. Good.`);
+    // Job match (only with a job description)
+    let jm = null;
+    if (jdText && jdText.trim().length > 80 && JD()) {
+      const j = JD().parseJD(jdText), roles = [c.headline, r.targetRole].concat((r.experience || []).map(e => e.role)).filter(Boolean).join(" | ");
+      const tk = (s) => lc(s).replace(/\b(senior|sr|junior|jr|lead|principal|associate|intern|trainee|i{1,3}|[0-9])\b/g, "").replace(/[^a-z ]/g, " ").split(/\s+/).filter(w => w.length > 2);
+      const jt = String(j.title || (jdText.split("\n").find(l => l.trim()) || "")).split(/\s[-–|]\s|\s+at\s+|[(.,:|]/)[0].replace(/^(job title|role|position)\s*/i, "").trim().split(/\s+/).slice(0, 7).join(" "), want = tk(jt), hit = want.filter(w => lc(roles).includes(w));
+      const tOk = want.length ? hit.length / want.length : null;
+      add("Job match", 2, tOk == null ? .6 : tOk >= .99 ? 1 : tOk >= .5 ? .6 : 0, "Job title match", tOk == null ? "Could not find a job title in the description." : tOk >= .99 ? `Your headline or a past role matches “${jt}”.` : `The job is “${jt}”. Put that exact title in your headline (and summary) if it honestly fits you.`);
+      const EDU = [["phd|doctorate", "PhD"], ["master|m\\.?tech|m\\.?sc|mba|m\\.?com|mca|post[- ]?graduate", "Master's / MBA"], ["bachelor|b\\.?tech|b\\.?e\\b|b\\.?sc|b\\.?com|bca|bba|graduate|degree", "Bachelor's"]];
+      const need = EDU.find(([re]) => new RegExp("\\b(" + re + ")", "i").test(jdText)), eduT = (r.education || []).map(e => e.degree + " " + (e.details || "")).join(" ");
+      if (need) { const rank = (t) => EDU.findIndex(([re]) => new RegExp("\\b(" + re + ")", "i").test(t)); const have = rank(eduT), nd = rank(need[0].split("|")[0]); add("Job match", 1, have < 0 ? 0 : have <= nd ? 1 : .3, "Education match", have < 0 ? `The job mentions a ${need[1]}. Add your degree to Education.` : have <= nd ? `The job asks for a ${need[1]}; your education covers it.` : `The job mentions a ${need[1]}. If you have it, list it; if not, show equivalent experience.`); }
+      const yrs = j.years && j.years.min, have = (() => { let m = 0; (r.experience || []).forEach(e => { if (!e.start) return; const s = Date.parse(e.start + "-01"), en = e.current || !e.end ? Date.now() : Date.parse(e.end + "-01"); if (!isNaN(s) && !isNaN(en) && en > s) m += (en - s) / (864e5 * 30.4); }); return Math.round(m / 12 * 10) / 10; })();
+      if (yrs) add("Job match", 2, have >= yrs ? 1 : have >= yrs * .6 ? .5 : 0, "Experience level", `The job wants ${yrs}+ years; your dated roles add up to about ${have} year${have === 1 ? "" : "s"}.` + (have < yrs ? " Count relevant projects and internships, and apply anyway if you meet most of the rest." : ""));
+      const lvJ = levelOf(jt), lvR = levelOf(roles.split(" | ")[0] || ""); add("Job match", 1, lvJ === lvR || lvJ === "Mid-level" ? 1 : .5, "Seniority wording", `Job reads as ${lvJ}; your headline reads as ${lvR}.` + (lvJ !== lvR && lvJ !== "Mid-level" ? " Make sure your summary speaks to that level." : ""));
+      const kw = j.keywords.filter(k => k.cat !== "soft"), miss = kw.filter(k => !JD().has(txt, k.k)); add("Job match", 3, kw.length ? 1 - miss.length / kw.length : .6, "Hard skills from the job", kw.length ? `${kw.length - miss.length} of ${kw.length} tools and skills found.` + (miss.length ? " Missing: " + miss.slice(0, 12).map(k => k.k + (k.imp === "must" ? " (must)" : "")).join(", ") + ". Add only the ones you really have, inside a bullet." : "") : "No hard skills detected in this description.");
+      const soft = j.keywords.filter(k => k.cat === "soft"), sm = soft.filter(k => !JD().has(txt, k.k)); if (soft.length) add("Job match", 1, 1 - sm.length / soft.length, "Soft skills from the job", sm.length ? `Show these in a bullet (who you worked with, what changed): ${sm.map(k => k.k).join(", ")}.` : "Soft skills from the job are covered.");
+      jm = { title: jt };
+    }
+    const cats = {}; C2.forEach(x => { const k = cats[x.cat] = cats[x.cat] || { w: 0, g: 0 }; k.w += x.w; k.g += x.w * Math.max(0, Math.min(1, x.ok)); });
+    const tw = C2.reduce((s, x) => s + x.w, 0), got = C2.reduce((s, x) => s + x.w * Math.max(0, Math.min(1, x.ok)), 0);
+    return { score: Math.round(got / tw * 100), cats: Object.entries(cats).map(([k, v]) => [k, Math.round(v.g / v.w * 100)]), checks: C2, jm };
+  }
+  window.RQ_CHECK = { checkup, levelOf, BUZZ_RE };
+})();

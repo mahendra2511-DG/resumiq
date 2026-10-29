@@ -316,7 +316,7 @@
   }
 
   /* ---------- register ---------- */
-  window.RQ_CP = { cpList, cpSave, profile, profileText, profileFill, evalFit, verdictOf, page, addCss, listOf, uniq, lc, clamp, ring, W, dlBadge, daysTo, setPending: (j) => { pending = j; } };
+  window.RQ_CP = { SUB, cpList, cpSave, profile, profileText, profileFill, evalFit, verdictOf, page, addCss, listOf, uniq, lc, clamp, ring, W, dlBadge, daysTo, setPending: (j) => { pending = j; } };
   window.RQ_EXTRA_ROUTES = Object.assign(window.RQ_EXTRA_ROUTES || {}, { profile: profileView, fit: fitView, shortlist: shortlistView, apply: applyView });
   window.RQ_EXTRA_TITLES = Object.assign(window.RQ_EXTRA_TITLES || {}, { profile: "Career profile", fit: "Fit check", shortlist: "Rank jobs", apply: "Apply kit" });
 })();
