@@ -38,15 +38,8 @@
   <div class="uc"><span>🎓 Students & freshers</span><span>🔁 Career switchers</span><span>💼 1–8 years experience</span><span>🧭 Managers & leaders</span><span>📊 Data & tech roles</span><span>🤝 Sales, HR, finance, ops & more</span></div></div></section>
 
 <section class="section" id="features"><div class="container">
-  <div class="section-head"><span class="eyebrow">Everything in one place</span><h2>From blank page to interview-ready</h2><p>Not just a template filler. Resumiq knows what a good Data Analyst, Project Manager or Sales Executive resume looks like, and coaches you section by section.</p></div>
-  <div class="grid g3">
-    <a class="card feature" href="/studio"><div class="fi">✍️</div><h3>Resume Studio</h3><p>Three-panel editor: sections, guided writing with bullet checks, and a live A4 preview with page-break warnings. Undo, versions, autosave.</p><span class="go">Open the studio →</span></a>
-    <a class="card feature" href="/job-match"><div class="fi">🎯</div><h3>ATS & Job Match</h3><p>Must-have vs preferred requirements, where your resume proves each one, and an explained score. No keyword stuffing.</p><span class="go">Match a job →</span></a>
-    <a class="card feature" href="/career-roles"><div class="fi">🧭</div><h3>120+ role playbooks</h3><p>What recruiters look for, bullet patterns, core skills and common mistakes for your exact role and experience level.</p><span class="go">Find your role →</span></a>
-    <a class="card feature" href="/app#/cover-letter"><div class="fi">✉️</div><h3>Cover letters</h3><p>Tailored to the job, built only from your real experience. Choose tone and length, edit, copy or download.</p><span class="go">Write one →</span></a>
-    <a class="card feature" href="/app#/linkedin"><div class="fi">💼</div><h3>LinkedIn optimizer</h3><p>Headline options, an About section, skills to pin and experience descriptions that match your target role.</p><span class="go">Optimise →</span></a>
-    <a class="card feature" href="/app#/interview"><div class="fi">🎤</div><h3>Interview prep</h3><p>Questions from your resume and the job, answer outlines, and STAR feedback on your practice answers.</p><span class="go">Practise →</span></a>
-  </div>
+  <div class="section-head"><span class="eyebrow">Everything in one place</span><h2>From blank page to offer letter</h2><p>25 free tools for every step of the job search. Not just a template filler. Resumiq knows what a good Data Analyst, Project Manager or Sales Executive resume looks like, and coaches you section by section.</p></div>
+  <div id="home-ln"><div class="grid g3"><a class="card feature" href="/studio"><div class="fi">✍️</div><h3>Resume Studio</h3><p>Build your resume with a live preview and ATS score.</p></a><a class="card feature" href="/job-match"><div class="fi">🎯</div><h3>ATS & Job Match</h3><p>Must-haves, gaps and fixes for any job.</p></a><a class="card feature" href="/app#/jobs"><div class="fi">🔎</div><h3>Job Agent</h3><p>Search every big job board in one go.</p></a></div></div>
   <div class="card card-pad" style="margin-top:18px;display:flex;gap:18px;align-items:center;flex-wrap:wrap"><img src="/assets/img/dexa-avatar.svg" alt="" width="56" height="56"><div style="flex:1;min-width:240px"><h3 style="margin:0 0 4px">Meet Dexa, your honest AI coach</h3><p class="muted" style="margin:0">Dexa rewrites bullets, drafts summaries, reads job descriptions and preps you for interviews. Where a number is missing, Dexa leaves a <span style="background:#FEF3C7;border-radius:4px;padding:0 4px">[placeholder]</span> for you to fill — it never makes up results. Look for the owl in the corner of any page.</p></div><button class="btn btn-ai" onclick="RQ.dexa.toggle(true)">🦉 Ask Dexa</button></div>
 </div></section>
 
@@ -124,7 +117,9 @@ Nice to have:
 <script src="/assets/js/resume.js?v=7"></script>
 <script src="/assets/js/jd.js?v=7"></script>
 <script src="/assets/js/samples.js?v=4"></script>
+<script src="/assets/js/launcher.js?v=1"></script>
 <script src="/assets/js/landing.js?v=4"></script>
+<script>window.RQ_LAUNCH && RQ_LAUNCH.mount(document.getElementById("home-ln"), { counts: false });</script>
 <script src="/assets/js/dexa.js?v=4" defer></script>
 </body>
 </html>
